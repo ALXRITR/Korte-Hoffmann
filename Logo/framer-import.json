@@ -1,15 +1,15 @@
 [
     {
-        "Slug": "architekten-ingenieure-l-center-kh-black",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-schwarz",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
+        "LockUp": "Zentriert",
         "Color": "Schwarz",
         "Optical-Size": "L",
         "®-Symbol": true,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Black.svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Black.svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Black.pdf",
@@ -17,16 +17,16 @@
         "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Black.jpg"
     },
     {
-        "Slug": "architekten-ingenieure-l-center-kh-color-dark",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-schwarz-mit-akzentfarbe",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
-        "Color": "Farbig (Dunkel)",
+        "LockUp": "Zentriert",
+        "Color": "Schwarz mit Akzentfarbe",
         "Optical-Size": "L",
         "®-Symbol": true,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Color%20(Dark).svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Color%20(Dark).svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Color%20(Dark).pdf",
@@ -34,16 +34,16 @@
         "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Color%20(Dark).jpg"
     },
     {
-        "Slug": "architekten-ingenieure-l-center-kh-color-light",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-weiss-mit-akzentfarbe",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
-        "Color": "Farbig (Hell)",
+        "LockUp": "Zentriert",
+        "Color": "Weiß mit Akzentfarbe",
         "Optical-Size": "L",
         "®-Symbol": true,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Color%20(Light).svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Color%20(Light).svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_Color%20(Light).pdf",
@@ -51,16 +51,16 @@
         "JPEG": ""
     },
     {
-        "Slug": "architekten-ingenieure-l-center-kh-white",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-weiss",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
-        "Color": "Weiss",
+        "LockUp": "Zentriert",
+        "Color": "Weiß",
         "Optical-Size": "L",
         "®-Symbol": true,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_White.svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_White.svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_White.pdf",
@@ -68,16 +68,16 @@
         "JPEG": ""
     },
     {
-        "Slug": "architekten-ingenieure-l-center-kh-no-r-black",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-schwarz-no-r",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
+        "LockUp": "Zentriert",
         "Color": "Schwarz",
         "Optical-Size": "L",
         "®-Symbol": false,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Black_No-(R).svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Black_No-(R).svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Black_No-(R).pdf",
@@ -85,16 +85,16 @@
         "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Black_No-(R).jpg"
     },
     {
-        "Slug": "architekten-ingenieure-l-center-kh-no-r-color-dark",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-schwarz-mit-akzentfarbe-no-r",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
-        "Color": "Farbig (Dunkel)",
+        "LockUp": "Zentriert",
+        "Color": "Schwarz mit Akzentfarbe",
         "Optical-Size": "L",
         "®-Symbol": false,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Color%20(Dark).svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Color%20(Dark).svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Color%20(Dark).pdf",
@@ -102,16 +102,16 @@
         "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Color%20(Dark).jpg"
     },
     {
-        "Slug": "architekten-ingenieure-l-center-kh-no-r-color-light",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-weiss-mit-akzentfarbe-no-r",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
-        "Color": "Farbig (Hell)",
+        "LockUp": "Zentriert",
+        "Color": "Weiß mit Akzentfarbe",
         "Optical-Size": "L",
         "®-Symbol": false,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Color%20(Light).svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Color%20(Light).svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_Color%20(Light).pdf",
@@ -119,16 +119,16 @@
         "JPEG": ""
     },
     {
-        "Slug": "architekten-ingenieure-l-center-kh-no-r-white",
+        "Slug": "kh-architekten-ingenieure-l-zentriert-kh-weiss-no-r",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
         "Division": "Architekten + Ingenieure",
-        "LockUp": "Center (KH)",
-        "Color": "Weiss",
+        "LockUp": "Zentriert",
+        "Color": "Weiß",
         "Optical-Size": "L",
         "®-Symbol": false,
         "Image": {
-            "url": ""
+            "url": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_White_No-(R).svg"
         },
         "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_White_No-(R).svg",
         "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center%20(KH)_No-(R)_White_No-(R).pdf",
@@ -136,139 +136,139 @@
         "JPEG": ""
     },
     {
-        "Slug": "architekten-ingenieure-l-center-black",
+        "Slug": "korte-hoffmann-l-schwarz",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
         "Color": "Schwarz",
         "Optical-Size": "L",
         "®-Symbol": true,
         "Image": {
             "url": ""
         },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black.svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black.pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black.png",
-        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black.jpg"
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_Black.pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_Black.png",
+        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_Black.jpg"
     },
     {
-        "Slug": "architekten-ingenieure-l-center-color-dark",
+        "Slug": "korte-hoffmann-l-weiss",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
-        "Color": "Farbig (Dunkel)",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
+        "Color": "Weiß",
         "Optical-Size": "L",
         "®-Symbol": true,
         "Image": {
             "url": ""
         },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark).svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark).pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark).png",
-        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark).jpg"
-    },
-    {
-        "Slug": "architekten-ingenieure-l-center-color-light",
-        ":draft": true,
-        "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
-        "Color": "Farbig (Hell)",
-        "Optical-Size": "L",
-        "®-Symbol": true,
-        "Image": {
-            "url": ""
-        },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Light).svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Light).pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Light).png",
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_White.pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_White.png",
         "JPEG": ""
     },
     {
-        "Slug": "architekten-ingenieure-l-center-white",
+        "Slug": "korte-hoffmann-l-schwarz-no-r",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
-        "Color": "Weiss",
-        "Optical-Size": "L",
-        "®-Symbol": true,
-        "Image": {
-            "url": ""
-        },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_White.svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_White.pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_White.png",
-        "JPEG": ""
-    },
-    {
-        "Slug": "architekten-ingenieure-l-center-no-r-black",
-        ":draft": true,
-        "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
         "Color": "Schwarz",
         "Optical-Size": "L",
         "®-Symbol": false,
         "Image": {
             "url": ""
         },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black_No-(R)_No-(R).svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black_No-(R)_No-(R).pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black_No-(R)_No-(R).png",
-        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Black_No-(R)_No-(R).jpg"
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_Black_No-(R).pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_Black_No-(R).png",
+        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_Black_No-(R).jpg"
     },
     {
-        "Slug": "architekten-ingenieure-l-center-no-r-color-dark",
+        "Slug": "korte-hoffmann-l-weiss-no-r",
         ":draft": true,
         "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
-        "Color": "Farbig (Dunkel)",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
+        "Color": "Weiß",
         "Optical-Size": "L",
         "®-Symbol": false,
         "Image": {
             "url": ""
         },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark)_No-(R).svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark)_No-(R).pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark)_No-(R).png",
-        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Dark)_No-(R).jpg"
-    },
-    {
-        "Slug": "architekten-ingenieure-l-center-no-r-color-light",
-        ":draft": true,
-        "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
-        "Color": "Farbig (Hell)",
-        "Optical-Size": "L",
-        "®-Symbol": false,
-        "Image": {
-            "url": ""
-        },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Light)_No-(R).svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Light)_No-(R).pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_Color%20(Light)_No-(R).png",
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_White_No-(R).pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/Korte-Hoffmann_L_White_No-(R).png",
         "JPEG": ""
     },
     {
-        "Slug": "architekten-ingenieure-l-center-no-r-white",
+        "Slug": "kh-l-schwarz",
         ":draft": true,
-        "Logotype": "Korte Hoffmann",
-        "Division": "Architekten + Ingenieure",
-        "LockUp": "Center",
-        "Color": "Weiss",
+        "Logotype": "KH",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
+        "Color": "Schwarz",
+        "Optical-Size": "L",
+        "®-Symbol": true,
+        "Image": {
+            "url": ""
+        },
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_Black.pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_Black.png",
+        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_Black.jpg"
+    },
+    {
+        "Slug": "kh-l-weiss",
+        ":draft": true,
+        "Logotype": "KH",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
+        "Color": "Weiß",
+        "Optical-Size": "L",
+        "®-Symbol": true,
+        "Image": {
+            "url": ""
+        },
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_White.pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_White.png",
+        "JPEG": ""
+    },
+    {
+        "Slug": "kh-l-schwarz-no-r",
+        ":draft": true,
+        "Logotype": "KH",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
+        "Color": "Schwarz",
         "Optical-Size": "L",
         "®-Symbol": false,
         "Image": {
             "url": ""
         },
-        "SVG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_White_No-(R)_No-(R).svg",
-        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_White_No-(R)_No-(R).pdf",
-        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH%20Architekten%20+%20Ingenieure/Architekten+Ingenieure_L_Center_White_No-(R)_No-(R).png",
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_Black_No-(R).pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_Black_No-(R).png",
+        "JPEG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_Black_No-(R).jpg"
+    },
+    {
+        "Slug": "kh-l-weiss-no-r",
+        ":draft": true,
+        "Logotype": "KH",
+        "Division": "- Ohne -",
+        "LockUp": "- Ohne -",
+        "Color": "Weiß",
+        "Optical-Size": "L",
+        "®-Symbol": false,
+        "Image": {
+            "url": ""
+        },
+        "SVG": "",
+        "PDF": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_White_No-(R).pdf",
+        "PNG": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE%20HOFFMANN/KH_L_White_No-(R).png",
         "JPEG": ""
     }
 ]
