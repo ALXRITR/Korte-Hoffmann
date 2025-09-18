@@ -2,30 +2,26 @@ import os
 import csv
 import requests
 
-# --- KONFIGURATION ---
+# --- KONFIGURATION (An Ihre neuen Dateinamen angepasst) ---
 OWNER = "ALXRITR"
 REPO = "Korte-Hoffmann"
-BASE_LOCAL_PATH = "."  # Bedeutet: der Ordner, in dem das Skript läuft
+BASE_LOCAL_PATH = "."
 BASE_REPO_PATH = "Logo"
 OUTPUT_CSV_FILE = "framer-import-final.csv"
 
-# --- MAPPING-REGELN (aus Ihrer Anleitung) ---
+# --- MAPPING-REGELN (An Ihre neuen Dateinamen angepasst) ---
 DIVISION_MAP = {
-    "KH Architekten + Ingenieure": "A+I",
-    "KH GRUPPE": "GR",
-    "KH Gebäudedruck": "G",
-    "KH Immobilien": "I",
-    "KORTE HOFFMANN": "no-division"
+    "KH-Architekten+Ingenieure": "A+I",
+    "KH-GRUPPE": "GR",
+    "KH-Gebauudedruck": "G", # Wichtig: Mit Ihrem Tippfehler "Gebauudedruck"
+    "KH-Immobilien": "I",
+    "KORTE-HOFFMANN": "no-division"
 }
-COLOR_MAP = { "Black": "B", "White": "W", "Color (Dark)": "C-B", "Color (Light)": "C-W" }
+COLOR_MAP = { "Black": "B", "White": "W", "Color-Dark": "C-B", "Color-Light": "C-W" }
 LOCKUP_MAP = { "Left": "L", "Center": "C", "Right": "R" }
 
 # --- FUNKTIONEN ---
 def get_all_download_urls():
-    """
-    Ruft alle Download-URLs rekursiv von der GitHub API ab.
-    Die zurückgegebenen URLs sind bereits von GitHub korrekt kodiert.
-    """
     print("Rufe alle korrekten, URL-kodierten Links von der GitHub API ab...")
     all_urls = {}
     def get_contents(path=""):
@@ -34,10 +30,8 @@ def get_all_download_urls():
             response = requests.get(api_url)
             response.raise_for_status()
             for item in response.json():
-                if item['type'] == 'file':
-                    all_urls[item['path']] = item['download_url']
-                elif item['type'] == 'dir':
-                    get_contents(item['path'])
+                if item['type'] == 'file': all_urls[item['path']] = item['download_url']
+                elif item['type'] == 'dir': get_contents(item['path'])
         except requests.exceptions.RequestException as e:
             print(f"Fehler bei API-Abfrage für Pfad '{path}': {e}")
     get_contents(BASE_REPO_PATH)
@@ -45,29 +39,28 @@ def get_all_download_urls():
     return all_urls
 
 def parse_filename(file_path, root_folder):
-    """Extrahiert alle Attribute aus dem Dateipfad und Dateinamen."""
     parts = file_path.replace(root_folder, '').strip(os.sep).split(os.sep)
     division_folder = parts[0]
     filename = parts[-1]
     data = { "Logotype": "KORTE HOFFMANN", "Division": "no-division", "LockUp": "no-lockup", "Color": "", "Optical-Size": "", "®-Symbol": "true" }
     data["Division"] = DIVISION_MAP.get(division_folder, "no-division")
     name_part = os.path.splitext(filename)[0]
-    if "_No-(R)" in name_part or "_no-(R)" in name_part:
+    if "_No-R" in name_part:
         data["®-Symbol"] = "false"
-        name_part = name_part.replace("_No-(R)", "").replace("_no-(R)", "")
-    if "Center (KH)" in name_part:
-        data["Logotype"], data["LockUp"] = "KH", "C"
-        name_part = name_part.replace("Center (KH)", "Center")
+        name_part = name_part.replace("_No-R", "")
+    if "-KH" in name_part:
+        data["Logotype"] = "KH"
+        if "Center-KH" in name_part:
+            data["LockUp"] = "C"
+            name_part = name_part.replace("-KH", "")
     elif name_part.startswith("KH_"): data["Logotype"], data["LockUp"] = "KH", "no-lockup"
     elif name_part.startswith("Korte-Hoffmann_"): data["Logotype"], data["LockUp"] = "KORTE HOFFMANN", "no-lockup"
     name_parts = name_part.split('_')
-    if name_parts[0] in ["Architekten+Ingenieure", "Gruppe", "Gebäudedruck", "Immobilien", "Korte-Hoffmann", "KH"]: name_parts.pop(0)
+    if name_parts[0] in ["Architekten+Ingenieure", "Gruppe", "Gebauudedruck", "Immobilien", "Korte-Hoffmann", "KH"]: name_parts.pop(0)
     for part in name_parts:
         if part in ["S", "M", "L"]: data["Optical-Size"] = part
         elif part in LOCKUP_MAP and data["LockUp"] == "no-lockup": data["LockUp"] = LOCKUP_MAP[part]
         elif part in COLOR_MAP: data["Color"] = COLOR_MAP[part]
-        elif part == "Color (Dark)": data["Color"] = "C-B"
-        elif part == "Color (Light)": data["Color"] = "C-W"
     if data["Division"] == "no-division":
         data["LockUp"] = "no-lockup"
         if data["Color"] not in ["B", "W"]: data["Color"] = ""
