@@ -11,8 +11,11 @@ Korte-Hoffmann | Logo sorter & ZIPper
 - Processes only: .jpg .png .svg .pdf
 - Normalizes filenames: umlauts -> ae/oe/ue/ss, spaces -> -, lowercase
   (keeps '+' as-is for 'architekten+ingenieure')
-- “dreihaus” -> belongs to KH-Gebaeudedruck, wird nie gelöscht
-- Favicons/Monogram go under brand/Favicons
+- Special routes:
+  * "korte-hoffmann_monogram_*color*" -> KORTE-HOFFMANN/Monogram/Color=*Color*
+  * "*_favicon_*color*" for brands -> <Brand>/Favicons/Color=*Color*
+  * Any "Dreihaus" -> KH-Gebaeudedruck/DREIHAUS/Color=*color*/Size=*size*/Trademark=*trademark*
+- Favicons/Monogram handled as above
 - Folders: Size=L|M|S / Color=White|Black|White+Accent|Black+Accent / Trademark=Yes|No
 - Cleaning rules (per interaktiver Bestätigung aktivierbar):
   * size S AND trademark=yes -> delete  [RULE:size_s_tm]
@@ -51,6 +54,8 @@ BRAND_CANON = [
     "KH-Gruppe",
     "KH-Immobilien",
     "KORTE-HOFFMANN",
+    "KH-Gebaeudedruck+Ingenieure",
+    "KH-Immobilien+Ingenieure",
 ]
 
 COLOR_CANON = [
@@ -114,6 +119,11 @@ def detect_brand_from_name(name: str) -> str | None:
     n = name.lower()
     if "dreihaus" in n:
         return "KH-Gebaeudedruck"
+    # explicit “+ingenieure” combinations
+    if "gebaeudedruck+ingenieure" in n or "gebäudedruck+ingenieure" in n:
+        return "KH-Gebaeudedruck+Ingenieure"
+    if "immobilien+ingenieure" in n:
+        return "KH-Immobilien+Ingenieure"
     if any(k in n for k in ["gebaeudedruck", "gebäudedruck", "gebauudedruck"]):
         return "KH-Gebaeudedruck"
     if "immobilien" in n:
@@ -167,7 +177,11 @@ def parse_tokens(name_no_ext: str):
     return size, tm, color
 
 def is_favicon(name_no_ext: str) -> bool:
-    return ("favicon" in name_no_ext) or ("monogram" in name_no_ext)
+    # favicon only
+    return "favicon" in name_no_ext
+
+def is_monogram(name_no_ext: str) -> bool:
+    return "monogram" in name_no_ext
 
 # ------------------------- Safe rename (Windows-casefix) -------------------------
 
@@ -230,9 +244,8 @@ def should_delete(brand: str | None, size: str | None, tm: str | None, color: st
 
 # ------------------------- Dest path builder -------------------------
 
-def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str | None, is_fav: bool) -> str:
-    if is_fav:
-        return os.path.join(brand_root, "Favicons")
+def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str | None, is_fav: bool, is_mono: bool, is_dreihaus: bool) -> str:
+    # normalize tokens
     sz = size if size in SIZE_CANON else "l"
     cl = color if color in COLOR_CANON else "black"
     tr = tm if tm in TRADEMARK_CANON else "no"
@@ -242,6 +255,26 @@ def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str 
         "white+accent": "Color=White+Accent",
         "black+accent": "Color=Black+Accent",
     }[cl]
+
+    # Special: Monogram under KORTE-HOFFMANN
+    if is_mono and os.path.basename(brand_root).lower() == "korte-hoffmann":
+        return os.path.join(brand_root, "Monogram", color_dir)
+
+    # Special: Favicons get Color subfolder for all brands
+    if is_fav:
+        return os.path.join(brand_root, "Favicons", color_dir)
+
+    # Special: DREIHAUS path nesting under KH-Gebaeudedruck
+    if is_dreihaus and os.path.basename(brand_root).lower().startswith("kh-gebaeudedruck"):
+        return os.path.join(
+            brand_root,
+            "DREIHAUS",
+            color_dir,
+            f"Size={sz.upper()}",
+            f"Trademark={'Yes' if tr=='yes' else 'No'}",
+        )
+
+    # Default
     return os.path.join(
         brand_root,
         f"Size={sz.upper()}",
@@ -368,7 +401,13 @@ def sort_from_dot_sort(base_dir: str, overwrite: bool, progress_step: int, debug
             continue
 
         brand_root = ensure_brand_root(base_dir, brand)
-        subdir = dest_path_for(brand_root, size, color, tm, is_favicon(stem))
+        subdir = dest_path_for(
+            brand_root,
+            size, color, tm,
+            is_fav=is_favicon(stem),
+            is_mono=is_monogram(stem),
+            is_dreihaus=("dreihaus" in stem.lower()),
+        )
         os.makedirs(subdir, exist_ok=True)
 
         dest = os.path.join(subdir, fn)
@@ -520,7 +559,13 @@ def crawl_repair_and_zip(base_dir: str, overwrite: bool, progress_step: int, deb
 
         # Correct location
         brand_root = ensure_brand_root(base_dir, brand)
-        ideal_dir = dest_path_for(brand_root, size, color, tm, is_favicon(stem))
+        ideal_dir = dest_path_for(
+            brand_root,
+            size, color, tm,
+            is_fav=is_favicon(stem),
+            is_mono=is_monogram(stem),
+            is_dreihaus=("dreihaus" in stem.lower()),
+        )
         current_dir = os.path.dirname(full_path)
 
         if os.path.normpath(current_dir) != os.path.normpath(ideal_dir):
