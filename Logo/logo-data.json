@@ -4,16 +4,20 @@
       "name": "Asset Type",
       "options": [
         {
-          "value": "dreihaus",
-          "name": "Dreihaus"
+          "value": "division_bundle",
+          "name": "Division Bundle"
         },
         {
-          "value": "monogram",
-          "name": "Monogram"
+          "value": "favicon_monogram",
+          "name": "Favicon Monogram"
+        },
+        {
+          "value": "special_logo",
+          "name": "special_logo"
         },
         {
           "value": "standard_logo",
-          "name": "Standard Logo"
+          "name": "standard_logo"
         }
       ]
     },
@@ -69,11 +73,11 @@
       "options": [
         {
           "value": "architekten+ingenieure",
-          "name": "Architekten Ingenieure"
+          "name": "Architekten+Ingenieure"
         },
         {
           "value": "gebaeudedruck",
-          "name": "Gebaeudedruck"
+          "name": "Gebäudedruck"
         },
         {
           "value": "gruppe",
@@ -143,12 +147,59 @@
   },
   "logos": [
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "division_bundle",
+      "division": "architekten+ingenieure",
+      "links": {
+        "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH-Architekten+Ingenieure.zip"
+      }
+    },
+    {
+      "asset_type": "division_bundle",
+      "division": "gebaeudedruck",
+      "links": {
+        "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH-Gebaeudedruck.zip"
+      }
+    },
+    {
+      "asset_type": "division_bundle",
+      "division": "gruppe",
+      "links": {
+        "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH-Gruppe.zip"
+      }
+    },
+    {
+      "asset_type": "division_bundle",
+      "division": "immobilien",
+      "links": {
+        "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KH-Immobilien.zip"
+      }
+    },
+    {
+      "asset_type": "division_bundle",
+      "division": "korte-hoffmann",
+      "links": {
+        "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN.zip"
+      }
+    },
+    {
+      "asset_type": "favicon_monogram",
       "color": "black",
-      "compact": null,
-      "division": null,
-      "lockup": null,
+      "links": {
+        "svg": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Favicons/favicon_monogram_black_box.svg",
+        "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Favicons/favicon_monogram_black_box.zip"
+      }
+    },
+    {
+      "asset_type": "favicon_monogram",
+      "color": "white",
+      "links": {
+        "svg": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Favicons/favicon_monogram_white_box.svg",
+        "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Favicons/favicon_monogram_white_box.zip"
+      }
+    },
+    {
+      "asset_type": "special_logo",
+      "color": "black",
       "optical_size": "l",
       "trademark": false,
       "links": {
@@ -160,12 +211,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "black",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "l",
       "trademark": true,
       "links": {
@@ -177,12 +224,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "white",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "l",
       "trademark": false,
       "links": {
@@ -193,12 +236,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "white",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "l",
       "trademark": true,
       "links": {
@@ -209,12 +248,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "black",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "m",
       "trademark": false,
       "links": {
@@ -226,12 +261,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "black",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "m",
       "trademark": true,
       "links": {
@@ -243,12 +274,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "white",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "m",
       "trademark": false,
       "links": {
@@ -259,12 +286,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "white",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "m",
       "trademark": true,
       "links": {
@@ -275,12 +298,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "black",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "s",
       "trademark": false,
       "links": {
@@ -292,12 +311,8 @@
       }
     },
     {
-      "asset_type": "dreihaus",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "white",
-      "compact": null,
-      "division": null,
-      "lockup": null,
       "optical_size": "s",
       "trademark": false,
       "links": {
@@ -308,14 +323,8 @@
       }
     },
     {
-      "asset_type": "monogram",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "black",
-      "compact": null,
-      "division": null,
-      "lockup": null,
-      "optical_size": null,
-      "trademark": null,
       "links": {
         "jpg": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=M/Color=Black/Trademark=No/monogram_black.jpg",
         "pdf": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=M/Color=Black/Trademark=No/monogram_black.pdf",
@@ -325,14 +334,8 @@
       }
     },
     {
-      "asset_type": "monogram",
-      "bar": null,
+      "asset_type": "special_logo",
       "color": "white",
-      "compact": null,
-      "division": null,
-      "lockup": null,
-      "optical_size": null,
-      "trademark": null,
       "links": {
         "pdf": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=M/Color=White/Trademark=No/monogram_white.pdf",
         "png": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Monogram/monogram_white.png",
@@ -9292,7 +9295,10 @@
       "optical_size": "l",
       "trademark": false,
       "links": {
+        "jpg": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=L/Color=Black/Trademark=No/korte-hoffmann_no-lockup_compact_no-bar_l_no-trademark_white.jpg",
+        "pdf": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=L/Color=Black/Trademark=No/korte-hoffmann_no-lockup_compact_no-bar_l_no-trademark_white.pdf",
         "png": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=L/Color=Black/Trademark=No/korte-hoffmann_no-lockup_compact_no-bar_l_no-trademark_white.png",
+        "svg": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=L/Color=Black/Trademark=No/korte-hoffmann_no-lockup_compact_no-bar_l_no-trademark_white.svg",
         "all-formats": "https://raw.githubusercontent.com/ALXRITR/Korte-Hoffmann/main/Logo/KORTE-HOFFMANN/Size=L/Color=Black/Trademark=No/korte-hoffmann_no-lockup_compact_no-bar_l_no-trademark_white.zip"
       }
     },
