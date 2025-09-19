@@ -1,7 +1,7 @@
 import requests
 import json
 import os
-from urllib.parse import urlparse, unquote
+from urllib.parse import unquote
 from collections import defaultdict
 
 # --- Configuration ---
@@ -13,42 +13,40 @@ OUTPUT_FILENAME = "logo-data.json"
 # ==============================================================================
 # SINGLE SOURCE OF TRUTH: All known filename parts and their meanings.
 # ==============================================================================
-VARIANT_DEFINITIONS = {
-    # Raw filename part -> {group, value (for booleans), name (for manifest)}
-    "architekten+ingenieure": {"group": "division", "name": "Architekten+Ingenieure"},
-    "gebaeudedruck":          {"group": "division", "name": "Gebäudedruck"},
-    "gruppe":                 {"group": "division", "name": "Gruppe"},
-    "immobilien":             {"group": "division", "name": "Immobilien"},
-    "korte-hoffmann":         {"group": "division", "name": "Korte-Hoffmann"},
-    
+# Defines the primary asset types. The script will look for these first.
+ASSET_TYPE_KEYS = {
+    "architekten+ingenieure", "gebaeudedruck", "gruppe", "immobilien", "korte-hoffmann",
+    "dreihaus", "favicon", "monogram"
+}
+
+# Defines all other variant parts.
+VARIANT_PART_DEFINITIONS = {
     "s": {"group": "optical_size", "name": "Small"},
     "m": {"group": "optical_size", "name": "Medium"},
     "l": {"group": "optical_size", "name": "Large"},
-    
-    "black":        {"group": "color", "name": "Black"},
-    "white":        {"group": "color", "name": "White"},
+    "black": {"group": "color", "name": "Black"},
+    "white": {"group": "color", "name": "White"},
     "black+accent": {"group": "color", "name": "Black+Accent"},
     "white+accent": {"group": "color", "name": "White+Accent"},
-    
-    "center":    {"group": "lockup", "name": "Center"},
-    "left":      {"group": "lockup", "name": "Left"},
-    "right":     {"group": "lockup", "name": "Right"},
+    "center": {"group": "lockup", "name": "Center"},
+    "left": {"group": "lockup", "name": "Left"},
+    "right": {"group": "lockup", "name": "Right"},
     "no-lockup": {"group": "lockup", "name": "No Lockup"},
-    
-    "bar":    {"group": "bar", "value": True, "name": "Bar"},
+    "bar": {"group": "bar", "value": True, "name": "Bar"},
     "no-bar": {"group": "bar", "value": False, "name": "No Bar"},
-    
-    "compact":     {"group": "compact", "value": True, "name": "Compact"},
+    "compact": {"group": "compact", "value": True, "name": "Compact"},
     "not-compact": {"group": "compact", "value": False, "name": "Not Compact"},
-    
-    "trademark":     {"group": "trademark", "value": True, "name": "With ®"},
-    "no-trademark": {"group": "trademark", "value": False, "name": "Without ®"}
+    "trademark": {"group": "trademark", "value": True, "name": "With ®"},
+    "no-trademark": {"group": "trademark", "value": False, "name": "Without ®"},
+    "box": {"group": "modifier", "value": "box"} # A modifier, not a primary variant
 }
 
-# A file is only valid if it contains one option from EACH of these groups.
-REQUIRED_VARIANT_GROUPS = {
-    "division", "optical_size", "color", "lockup", 
-    "bar", "compact", "trademark"
+# CONTEXT-AWARE VALIDATION: Required variants based on the asset type.
+REQUIRED_BY_ASSET_TYPE = {
+    "standard_logo": {"division", "optical_size", "color", "lockup", "bar", "compact", "trademark"},
+    "dreihaus": {"optical_size", "color", "trademark"},
+    "monogram": {"color"},
+    "favicon": {"color"}
 }
 
 
@@ -57,98 +55,110 @@ def get_all_file_urls(owner, repo, path=""):
     api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/main?recursive=1"
     response = requests.get(api_url, headers={'Accept': 'application/vnd.github.v3+json'})
     if response.status_code != 200: return []
-    
     tree = response.json().get('tree', [])
     ignore_patterns = ['.py', '.json', '.csv', '.DS_Store', '.git', 'README']
     urls = []
-
     for item in tree:
         if item['type'] == 'blob' and item['path'].startswith(path + '/'):
-            # Ignore if the path contains any of the ignore patterns
             if not any(pattern in item['path'] for pattern in ignore_patterns):
-                 urls.append(f"https://raw.githubusercontent.com/{owner}/{repo}/main/{item['path']}")
+                decoded_path = unquote(item['path'])
+                urls.append(f"https://raw.githubusercontent.com/{owner}/{repo}/main/{decoded_path}")
     return urls
 
 
 def parse_and_validate_files(urls):
-    """
-    Parses all filenames, validates them, and logs any failures.
-    Returns a list of successfully parsed file data and a log of ignored files.
-    """
-    successfully_parsed_files = []
-    ignored_files_log = []
+    """Parses filenames, validates them based on context, and logs failures."""
+    parsed_files = []
+    ignored_log = []
 
     for url in urls:
-        filename, _ = os.path.splitext(os.path.basename(unquote(url)))
-        parts = filename.split('_')
+        filename, _ = os.path.splitext(os.path.basename(url))
+        parts = filename.lower().replace('kh-', '').split('_')
         
         raw_variants = {}
-        unmatched_parts = []
-        duplicate_groups = []
-
-        for part in parts:
-            if part in VARIANT_DEFINITIONS:
-                definition = VARIANT_DEFINITIONS[part]
-                group = definition["group"]
-                value = definition.get("value", part)
-                
-                if group in raw_variants:
-                    duplicate_groups.append(group)
-                else:
-                    raw_variants[group] = value
+        unmatched = []
+        
+        # Step 1: Identify Asset Type and Division from the first part
+        first_part = parts[0]
+        if first_part in ASSET_TYPE_KEYS:
+            # Is it a standard logo division or a special asset type?
+            if first_part in ["dreihaus", "favicon", "monogram"]:
+                raw_variants['asset_type'] = first_part
             else:
-                unmatched_parts.append(part)
-        
-        # --- Validation Step ---
-        missing_groups = REQUIRED_VARIANT_GROUPS - set(raw_variants.keys())
-        
-        if missing_groups or unmatched_parts or duplicate_groups:
-            reasons = []
-            if missing_groups: reasons.append(f"Missing required variants: {sorted(list(missing_groups))}")
-            if unmatched_parts: reasons.append(f"Found unmatched parts: {unmatched_parts}")
-            if duplicate_groups: reasons.append(f"Found duplicate variants for group(s): {duplicate_groups}")
-            ignored_files_log.append({'file': filename, 'reason': '; '.join(reasons)})
+                raw_variants['asset_type'] = 'standard_logo'
+                raw_variants['division'] = first_part
         else:
-            successfully_parsed_files.append({"url": url, "raw_variants": raw_variants})
+            unmatched.append(first_part)
+
+        # Step 2: Parse the rest of the parts
+        for part in parts[1:]:
+            if part in VARIANT_PART_DEFINITIONS:
+                definition = VARIANT_PART_DEFINITIONS[part]
+                group = definition['group']
+                if group != 'modifier': # Modifiers are recognized but not stored as primary variants
+                    raw_variants[group] = definition.get('value', part)
+            else:
+                unmatched.append(part)
+
+        # Step 3: Validate based on asset type
+        asset_type = raw_variants.get('asset_type')
+        if not asset_type:
+            ignored_log.append({'file': filename, 'reason': f"Could not determine asset type from first part: '{first_part}'"})
+            continue
+
+        required_groups = REQUIRED_BY_ASSET_TYPE.get(asset_type, set())
+        missing_groups = required_groups - set(raw_variants.keys())
+
+        if missing_groups or unmatched:
+            reasons = []
+            if missing_groups: reasons.append(f"Missing required variants for asset_type '{asset_type}': {sorted(list(missing_groups))}")
+            if unmatched: reasons.append(f"Found unmatched parts: {unmatched}")
+            ignored_log.append({'file': filename, 'reason': '; '.join(reasons)})
+        else:
+            parsed_files.append({"url": url, "raw_variants": raw_variants})
             
-    return successfully_parsed_files, ignored_files_log
+    return parsed_files, ignored_log
 
 
-def create_manifest_and_aliases(parsed_files):
-    """Builds the manifest and alias maps from successfully parsed files."""
-    discovered_options = defaultdict(set)
+def create_manifest(parsed_files):
+    """Builds the variant manifest from successfully parsed files."""
+    discovered = defaultdict(set)
     for file_data in parsed_files:
         for group, value in file_data["raw_variants"].items():
-            discovered_options[group].add(value)
+            discovered[group].add(value)
+    
+    # Combine all known variant parts into one dictionary for easy name lookup
+    all_definitions = {k: v for k, v in VARIANT_PART_DEFINITIONS.items()}
+    for key in ASSET_TYPE_KEYS:
+        all_definitions[key] = {"group": "asset_type" if key in ["dreihaus", "favicon", "monogram"] else "division", "name": key.replace('+', ' ').title()}
+    all_definitions['standard_logo'] = {"group": "asset_type", "name": "Standard Logo"}
 
-    variants_manifest = {}
-    master_alias_map = defaultdict(dict)
 
-    for group, options_set in sorted(discovered_options.items()):
-        variants_manifest[group] = {"name": group.replace('_', ' ').title(), "options": []}
-        sorted_options = sorted(list(options_set), key=lambda x: str(x))
-
-        for i, option in enumerate(sorted_options):
-            alias = f"alias_{i + 1}"
-            master_alias_map[group][option] = alias
-            
-            name = ""
-            for key, definition in VARIANT_DEFINITIONS.items():
-                if definition["group"] == group and definition.get("value", key) == option:
-                    name = definition["name"]
+    manifest = {}
+    for group, options_set in sorted(discovered.items()):
+        manifest[group] = {"name": group.replace('_', ' ').title(), "options": []}
+        for option_value in sorted(list(options_set), key=lambda x: str(x)):
+            # Find the display name
+            name = str(option_value) # Default name
+            for key, definition in all_definitions.items():
+                if definition['group'] == group and definition.get('value', key) == option_value:
+                    name = definition['name']
                     break
+            manifest[group]["options"].append({"value": option_value, "name": name})
             
-            variants_manifest[group]["options"].append({"alias": alias, "name": name})
-    return variants_manifest, master_alias_map
+    return manifest
 
-
-def group_and_finalize_logos(parsed_files, master_alias_map):
-    """Groups parsed files by their aliases and builds the final 'logos' list."""
+def group_and_finalize_logos(parsed_files):
+    """Groups parsed files by their variants and builds the final 'logos' list."""
     grouped_logos = defaultdict(dict)
-
     for file_data in parsed_files:
-        logo_aliases = {group: master_alias_map[group].get(value) for group, value in file_data["raw_variants"].items()}
-        variant_key = tuple(sorted(logo_aliases.items()))
+        # Fill in missing optional variants with None for consistent grouping
+        all_variant_keys = set(REQUIRED_BY_ASSET_TYPE['standard_logo']) | {'asset_type', 'division'}
+        for key in all_variant_keys:
+            if key not in file_data["raw_variants"]:
+                file_data["raw_variants"][key] = None
+
+        variant_key = tuple(sorted(file_data["raw_variants"].items()))
         
         _, file_ext = os.path.splitext(file_data["url"])
         format_key = 'all-formats' if file_ext.lower() == '.zip' else file_ext.lower().strip('.')
@@ -156,7 +166,7 @@ def group_and_finalize_logos(parsed_files, master_alias_map):
             grouped_logos[variant_key][format_key] = file_data["url"]
             
     logos_list = [dict(variant_tuple, **{"links": links}) for variant_tuple, links in grouped_logos.items()]
-    return sorted(logos_list, key=lambda x: [str(x.get(k, '')) for k in sorted(master_alias_map.keys())])
+    return sorted(logos_list, key=lambda x: str(x.get('division')) + str(x.get('asset_type')))
 
 
 # --- Main Execution ---
@@ -169,18 +179,20 @@ if all_urls:
     valid_files, ignored_log = parse_and_validate_files(all_urls)
     
     if ignored_log:
-        print(f"WARNING: Ignored {len(ignored_log)} files due to parsing errors:")
-        for entry in ignored_log:
+        print(f"\nWARNING: Ignored {len(ignored_log)} files that did not match naming convention:")
+        unique_ignored = sorted(list({frozenset(d.items()) for d in ignored_log}), key=lambda x: dict(x)['file'])
+        for item in unique_ignored:
+            entry = dict(item)
             print(f"  - File: '{entry['file']}' -> Reason: {entry['reason']}")
     
     print(f"\nSuccessfully validated {len(valid_files)} files.")
     
-    print("\n--- Phase 2: Generating Variant Manifest and Aliases ---")
-    variants_manifest, alias_map = create_manifest_and_aliases(valid_files)
-    print("Manifest and alias maps created.")
+    print("\n--- Phase 2: Generating Variant Manifest (Legend) ---")
+    variants_manifest = create_manifest(valid_files)
+    print("Manifest created.")
     
     print("\n--- Phase 3: Grouping files and finalizing JSON ---")
-    logos_list = group_and_finalize_logos(valid_files, alias_map)
+    logos_list = group_and_finalize_logos(valid_files)
     
     final_data = {"variants": variants_manifest, "logos": logos_list}
     print(f"Processing complete. Found {len(logos_list)} unique logo combinations.")
