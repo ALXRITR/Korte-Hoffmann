@@ -10,9 +10,11 @@ REPO = "Korte-Hoffmann"
 BASE_PATH = "Logo"
 OUTPUT_FILENAME = "logo-data.json"
 
-# --- Mappings: Raw Filename Parts to Display Names and Variant Groups ---
+# ==============================================================================
+# SINGLE SOURCE OF TRUTH: All known filename parts and their meanings.
+# ==============================================================================
 VARIANT_DEFINITIONS = {
-    # This maps the raw string found in filenames to its properties.
+    # Raw filename part -> {group, value (for booleans), name (for manifest)}
     "architekten+ingenieure": {"group": "division", "name": "Architekten+Ingenieure"},
     "gebaeudedruck":          {"group": "division", "name": "Gebäudedruck"},
     "gruppe":                 {"group": "division", "name": "Gruppe"},
@@ -43,34 +45,81 @@ VARIANT_DEFINITIONS = {
     "no-trademark": {"group": "trademark", "value": False, "name": "Without ®"}
 }
 
+# A file is only valid if it contains one option from EACH of these groups.
+REQUIRED_VARIANT_GROUPS = {
+    "division", "optical_size", "color", "lockup", 
+    "bar", "compact", "trademark"
+}
+
 
 def get_all_file_urls(owner, repo, path=""):
-    """Fetches all file URLs efficiently using the Git Trees API."""
+    """Fetches all file URLs, ignoring script/config files."""
     api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/main?recursive=1"
     response = requests.get(api_url, headers={'Accept': 'application/vnd.github.v3+json'})
     if response.status_code != 200: return []
+    
     tree = response.json().get('tree', [])
-    # Filter out script files and dotfiles from the list
-    ignore_files = ['.py', '.json', '.csv', '.DS_Store']
+    ignore_patterns = ['.py', '.json', '.csv', '.DS_Store', '.git', 'README']
     urls = []
+
     for item in tree:
         if item['type'] == 'blob' and item['path'].startswith(path + '/'):
-            if not any(item['path'].endswith(ext) for ext in ignore_files) and '.git' not in item['path']:
+            # Ignore if the path contains any of the ignore patterns
+            if not any(pattern in item['path'] for pattern in ignore_patterns):
                  urls.append(f"https://raw.githubusercontent.com/{owner}/{repo}/main/{item['path']}")
     return urls
 
-def build_variant_maps(urls):
-    """Pass 1: Discover all options from filenames and build the manifest and alias maps."""
-    discovered_options = defaultdict(set)
+
+def parse_and_validate_files(urls):
+    """
+    Parses all filenames, validates them, and logs any failures.
+    Returns a list of successfully parsed file data and a log of ignored files.
+    """
+    successfully_parsed_files = []
+    ignored_files_log = []
+
     for url in urls:
         filename, _ = os.path.splitext(os.path.basename(unquote(url)))
-        for part in filename.split('_'):
+        parts = filename.split('_')
+        
+        raw_variants = {}
+        unmatched_parts = []
+        duplicate_groups = []
+
+        for part in parts:
             if part in VARIANT_DEFINITIONS:
                 definition = VARIANT_DEFINITIONS[part]
                 group = definition["group"]
-                # For booleans, use the value (True/False); for others, use the raw string part.
-                value_to_store = definition.get("value", part)
-                discovered_options[group].add(value_to_store)
+                value = definition.get("value", part)
+                
+                if group in raw_variants:
+                    duplicate_groups.append(group)
+                else:
+                    raw_variants[group] = value
+            else:
+                unmatched_parts.append(part)
+        
+        # --- Validation Step ---
+        missing_groups = REQUIRED_VARIANT_GROUPS - set(raw_variants.keys())
+        
+        if missing_groups or unmatched_parts or duplicate_groups:
+            reasons = []
+            if missing_groups: reasons.append(f"Missing required variants: {sorted(list(missing_groups))}")
+            if unmatched_parts: reasons.append(f"Found unmatched parts: {unmatched_parts}")
+            if duplicate_groups: reasons.append(f"Found duplicate variants for group(s): {duplicate_groups}")
+            ignored_files_log.append({'file': filename, 'reason': '; '.join(reasons)})
+        else:
+            successfully_parsed_files.append({"url": url, "raw_variants": raw_variants})
+            
+    return successfully_parsed_files, ignored_files_log
+
+
+def create_manifest_and_aliases(parsed_files):
+    """Builds the manifest and alias maps from successfully parsed files."""
+    discovered_options = defaultdict(set)
+    for file_data in parsed_files:
+        for group, value in file_data["raw_variants"].items():
+            discovered_options[group].add(value)
 
     variants_manifest = {}
     master_alias_map = defaultdict(dict)
@@ -83,7 +132,6 @@ def build_variant_maps(urls):
             alias = f"alias_{i + 1}"
             master_alias_map[group][option] = alias
             
-            # Find the original definition to get the display name
             name = ""
             for key, definition in VARIANT_DEFINITIONS.items():
                 if definition["group"] == group and definition.get("value", key) == option:
@@ -91,56 +139,48 @@ def build_variant_maps(urls):
                     break
             
             variants_manifest[group]["options"].append({"alias": alias, "name": name})
-
     return variants_manifest, master_alias_map
 
-def parse_logos_with_aliases(urls, master_alias_map):
-    """Pass 2: Parse all logos and assign the generic aliases."""
+
+def group_and_finalize_logos(parsed_files, master_alias_map):
+    """Groups parsed files by their aliases and builds the final 'logos' list."""
     grouped_logos = defaultdict(dict)
 
-    for url in urls:
-        path = unquote(url)
-        filename, file_ext = os.path.splitext(os.path.basename(path))
-        
-        raw_variants = {}
-        for part in filename.split('_'):
-            if part in VARIANT_DEFINITIONS:
-                definition = VARIANT_DEFINITIONS[part]
-                group = definition["group"]
-                value = definition.get("value", part)
-                raw_variants[group] = value
-        
-        # If no variants were found (e.g., a README file), skip it
-        if not raw_variants:
-            continue
-
-        logo_aliases = {group: master_alias_map[group].get(value) for group, value in raw_variants.items()}
-        
-        # Ensure all variant groups have at least a null alias if not present
-        for group in master_alias_map.keys():
-            if group not in logo_aliases:
-                logo_aliases[group] = None
-
+    for file_data in parsed_files:
+        logo_aliases = {group: master_alias_map[group].get(value) for group, value in file_data["raw_variants"].items()}
         variant_key = tuple(sorted(logo_aliases.items()))
         
+        _, file_ext = os.path.splitext(file_data["url"])
         format_key = 'all-formats' if file_ext.lower() == '.zip' else file_ext.lower().strip('.')
         if format_key:
-            grouped_logos[variant_key][format_key] = url
+            grouped_logos[variant_key][format_key] = file_data["url"]
             
     logos_list = [dict(variant_tuple, **{"links": links}) for variant_tuple, links in grouped_logos.items()]
     return sorted(logos_list, key=lambda x: [str(x.get(k, '')) for k in sorted(master_alias_map.keys())])
 
+
 # --- Main Execution ---
 print("Fetching file links from GitHub...")
 all_urls = get_all_file_urls(OWNER, REPO, BASE_PATH)
-print(f"Found {len(all_urls)} relevant asset URLs.")
+print(f"Found {len(all_urls)} potential asset URLs.")
 
 if all_urls:
-    print("Pass 1: Discovering all variants and generating alias maps...")
-    variants_manifest, alias_map = build_variant_maps(all_urls)
+    print("\n--- Phase 1: Parsing and Validating all filenames ---")
+    valid_files, ignored_log = parse_and_validate_files(all_urls)
     
-    print("Pass 2: Parsing all logos and applying generic aliases...")
-    logos_list = parse_logos_with_aliases(all_urls, alias_map)
+    if ignored_log:
+        print(f"WARNING: Ignored {len(ignored_log)} files due to parsing errors:")
+        for entry in ignored_log:
+            print(f"  - File: '{entry['file']}' -> Reason: {entry['reason']}")
+    
+    print(f"\nSuccessfully validated {len(valid_files)} files.")
+    
+    print("\n--- Phase 2: Generating Variant Manifest and Aliases ---")
+    variants_manifest, alias_map = create_manifest_and_aliases(valid_files)
+    print("Manifest and alias maps created.")
+    
+    print("\n--- Phase 3: Grouping files and finalizing JSON ---")
+    logos_list = group_and_finalize_logos(valid_files, alias_map)
     
     final_data = {"variants": variants_manifest, "logos": logos_list}
     print(f"Processing complete. Found {len(logos_list)} unique logo combinations.")
@@ -148,5 +188,5 @@ if all_urls:
     with open(OUTPUT_FILENAME, 'w', encoding='utf-8') as f:
         json.dump(final_data, f, indent=2, ensure_ascii=False)
 
-    print(f"\n--- Success! ---")
-    print(f"Data file with generic aliases and ZIP links created as '{OUTPUT_FILENAME}'.")
+    print(f"\n--- SUCCESS ---")
+    print(f"Data file created as '{OUTPUT_FILENAME}'.")
