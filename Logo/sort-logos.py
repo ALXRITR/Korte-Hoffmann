@@ -1,395 +1,458 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
-sort-logos.py
-
-Two modes:
-  --mode sort  : process files inside ./".sort"
-  --mode audit : crawl existing brand folders, fix structure/names, apply deletes, and (re)generate zips if missing
-
-Rules covered:
-- Normalize filenames: lowercase, umlauts->ascii (ä→ae, ö→oe, ü→ue, ß→ss), spaces->"-"
-  BUT around '+': compress spaces so "architekten + ingenieure" -> "architekten+ingenieure" (no '-' around '+')
-- Brands (top-level): architekten+ingenieure, gruppe, gebaeudedruck, immobilien (+ korte-hoffmann for KH favicons/monogram)
-- "dreihaus" belongs to brand "gebaeudedruck"
-- Subtree (created if brand folder exists/needed):
-    Brand/
-      Favicons/
-      Size=L/
-      Size=M/
-      Size=S/
-        each has Color=White / Color=Black / Color=Black+Accent / Color=White+Accent/
-          each has Trademark=Yes / Trademark=No/
-- Place files by parsed attributes (size/color/trademark). Favicons & monogram go under Brand/Favicons.
-- Delete rules:
-    1) any WHITE JPG -> delete
-    2) size == s AND trademark == yes (not "no-trademark") -> delete
-    3) if brand in {korte-hoffmann variants, group/gruppe} AND color in {white+accent, black+accent} -> delete
-- Zips:
-    A) Per brand: zip the whole Brand folder (placed at Brand/<brand>.zip)
-    B) Per variant (same basename across formats): create <basename>.zip containing jpg/png/svg/pdf that exist.
-       Place the variant zip next to the files (inside their final folder). Skip if already exists.
+Korte-Hoffmann | Logo sorter & ZIPper
+- Two modes: sort from .sort (then ZIP) or crawl/repair & ZIP only
+- Skips OS metadata like .DS_Store / Thumbs.db / desktop.ini
+- Processes only: .jpg .png .svg .pdf
+- Normalizes filenames: umlauts -> ae/oe/ue/ss, spaces -> -, lowercase
+  (keeps '+' as-is for 'architekten+ingenieure')
+- “dreihaus” -> belongs to KH-Gebaeudedruck
+- Favicons/Monogram go under brand/Favicons
+- Folders: Size=L|M|S / Color=White|Black|White+Accent|Black+Accent / Trademark=Yes|No
+- Cleaning rules:
+  * size S AND trademark=yes -> delete
+  * any WHITE + JPG -> delete
+  * brand in {KORTE-HOFFMANN, KH-Gruppe} AND color in {white+accent, black+accent} -> delete
+- After sorting: crawl directory to build ZIPs per-variant and per-brand
 """
 
-from __future__ import annotations
 import argparse
 import os
 import re
-import shutil
 import sys
+import shutil
 import zipfile
-from pathlib import Path
 from collections import defaultdict
+from datetime import datetime
 
-# ---------- Config ----------
-ROOT = Path(".").resolve()
-SORT_DIR = ROOT / ".sort"
+# ------------------------- Logging helpers -------------------------
 
-# Known brands (normalized tokens you expect in filenames)
-KNOWN_BRANDS = (
-    "architekten+ingenieure",
-    "gruppe",
-    "gebaeudedruck",
-    "immobilien",
-    "korte-hoffmann",  # parent brand (favicons/monogram special cases)
-)
+def ts():
+    return datetime.now().strftime("%H:%M:%S")
 
-# Variants for KH detection (accent ban + favicon home)
-KH_ALIASES = (
-    "korte-hoffmann", "korte-hoffman", "kortehoffmann", "kortehoffman",
-)
+def log(level, msg):
+    print(f"[{ts()}][{level}] {msg}", flush=True)
 
-# Accent-ban brands
-BRANDS_ACCENT_BAN = KH_ALIASES + ("group", "gruppe")
+def info(msg): log("INF", msg)
+def dbg(msg):  print(f"[{ts()}][DBG] {msg}", flush=True)
+def warn(msg): log("WRN", msg)
+def err(msg):  log("ERR", msg)
 
-# Extensions we care about
-VALID_EXTS = {".jpg", ".png", ".svg", ".pdf"}
+# ------------------------- Config -------------------------
 
-# Colors we track
-COLOR_MAP = {
-    "white": "Color=White",
-    "black": "Color=Black",
-    "white+accent": "Color=White+Accent",
-    "black+accent": "Color=Black+Accent",
+BRAND_CANON = [
+    "KH-Architekten+Ingenieure",
+    "KH-Gebaeudedruck",
+    "KH-Gruppe",
+    "KH-Immobilien",
+    "KORTE-HOFFMANN",
+]
+
+COLOR_CANON = [
+    "white",
+    "black",
+    "white+accent",
+    "black+accent",
+]
+
+SIZE_CANON = ["l", "m", "s"]
+
+TRADEMARK_CANON = ["yes", "no"]
+
+ALLOWED_EXTS = {".jpg", ".png", ".svg", ".pdf"}
+
+SKIP_FILES = {"thumbs.db", "desktop.ini"}
+
+# ------------------------- Normalization -------------------------
+
+UMLAUT_MAP = {
+    "ä":"ae","Ä":"ae",
+    "ö":"oe","Ö":"oe",
+    "ü":"ue","Ü":"ue",
+    "ß":"ss",
 }
 
-# Trademark mapping
-TRADEMARK_MAP = {
-    "trademark": "Trademark=Yes",
-    "no-trademark": "Trademark=No",
-    "yes": "Trademark=Yes",
-    "no": "Trademark=No",
-}
-
-# Sizes mapping (letters -> folder names)
-SIZE_MAP = {"l": "Size=L", "m": "Size=M", "s": "Size=S"}
-
-# Patterns
-# Typical basename structure contains these tokens in any order: brand, left/center/right, compact/not-compact,
-# bar/no-bar, size(l/m/s), no-trademark|trademark, color(white/black/white+accent/black+accent)
-RE_SIZE = re.compile(r"(?:^|_)([lms])(?:_|$)")
-RE_TRADE = re.compile(r"(?:^|_)((?:no-)?trademark|yes|no)(?:_|$)")
-RE_COLOR = re.compile(r"(?:^|_)(white\+accent|black\+accent|white|black)(?:_|$)")
-
-# Special favicon/monogram detection
-RE_FAVICON = re.compile(r"(?:^|_)favicon(?:_|$)")
-RE_MONOGRAM = re.compile(r"(?:^|_)monogram(?:_|$)")
-
-# Dreihaus -> Gebaeudedruck mapping trigger
-RE_DREIHAUS = re.compile(r"dreihaus")
-
-# brand tokens (some raw -> normalized)
-BRAND_ALIASES = {
-    "architekten+ingenieure": "architekten+ingenieure",
-    "architekten-ingenieure": "architekten+ingenieure",
-    "architekten ingenieure": "architekten+ingenieure",
-    "gruppe": "gruppe",
-    "group": "gruppe",
-    "gebaeudedruck": "gebaeudedruck",
-    "immobilien": "immobilien",
-    "korte-hoffmann": "korte-hoffmann",
-    "korte-hoffman": "korte-hoffmann",
-    "kortehoffmann": "korte-hoffmann",
-    "kortehoffman": "korte-hoffmann",
-}
-
-# ---------- Helpers ----------
-
-def normalize_umlauts(s: str) -> str:
-    repl = (
-        ("ä", "ae"), ("ö", "oe"), ("ü", "ue"),
-        ("Ä", "ae"), ("Ö", "oe"), ("Ü", "ue"),
-        ("ß", "ss"),
-    )
-    for a, b in repl:
-        s = s.replace(a, b)
+def de_umlaut(s: str) -> str:
+    for k, v in UMLAUT_MAP.items():
+        s = s.replace(k, v)
     return s
 
-def normalize_filename(raw: str) -> str:
+def normalize_stem(stem: str) -> str:
     """
-    Lowercase, remove umlauts, replace spaces with '-', but
-    compress spaces around '+' so 'a + b' -> 'a+b'.
-    Keep existing hyphens/underscores/plus.
+    Normalize only the stem (no extension):
+    - umlauts
+    - special handling 'architekten + ingenieure' -> 'architekten+ingenieure'
+    - keep '+' (do NOT make '-+-')
+    - spaces -> '-'
+    - lowercase, collapse duplicate '-'
     """
-    name, ext = os.path.splitext(raw)
-    # umlauts
-    name = normalize_umlauts(name)
-    # trim/normalize spaces around '+'
-    # first compress "space + space" to '+'
-    name = re.sub(r"\s*\+\s*", "+", name)
-    # remaining spaces -> '-'
-    name = re.sub(r"\s+", "-", name)
-    # lowercase
+    name = de_umlaut(stem).strip()
+
+    pat_ai = re.compile(r"architekten\s*\+\s*ingenieure", re.IGNORECASE)
+    name = pat_ai.sub("architekten+ingenieure", name)
+
     name = name.lower()
-    # disallow double hyphens (cosmetic)
-    name = re.sub(r"-{2,}", "-", name).strip("-_")
-    # final
-    return f"{name}{ext.lower()}"
+    name = re.sub(r"\s+", "-", name)
+    name = re.sub(r"-{2,}", "-", name)
+    return name
 
-def detect_brand_from_name(name_l: str) -> str | None:
-    # Dreihaus implies Gebaeudedruck
-    if RE_DREIHAUS.search(name_l):
-        return "gebaeudedruck"
-    # direct tokens
-    for raw, norm in BRAND_ALIASES.items():
-        if raw in name_l:
-            return norm
-    # otherwise try to guess from leading token
-    head = name_l.split("_", 1)[0]
-    return BRAND_ALIASES.get(head, None)
+# ------------------------- Brand detection -------------------------
 
-def parse_attrs(name_l: str) -> tuple[str|None, str|None, str|None]:
-    """Return (size, color, trademark) as normalized tokens (l/m/s, white/black/white+accent/black+accent, yes/no)."""
+def detect_brand_from_name(name: str) -> str | None:
+    n = name.lower()
+    if "dreihaus" in n:
+        return "KH-Gebaeudedruck"
+    if any(k in n for k in ["gebaeudedruck", "gebäudedruck", "gebauudedruck"]):
+        return "KH-Gebaeudedruck"
+    if "immobilien" in n:
+        return "KH-Immobilien"
+    if "architekten+ingenieure" in n or re.search(r"architekten\s*\+\s*ingenieure", n):
+        return "KH-Architekten+Ingenieure"
+    if "gruppe" in n or "group" in n:
+        return "KH-Gruppe"
+    if any(k in n for k in ["korte-hoffmann","korte hoffmann","korte_hoffmann","kortehoffmann","kortehoffman","korte-hoffman"]):
+        return "KORTE-HOFFMANN"
+    return None
+
+def ensure_brand_root(base_dir: str, brand: str) -> str:
+    existing = {d.lower(): d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))}
+    # Prefer existing casing if present
+    if brand.lower() in existing:
+        return os.path.join(base_dir, existing[brand.lower()])
+    # Otherwise create the canon one
+    path = os.path.join(base_dir, brand)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+# ------------------------- Variant parsing -------------------------
+
+def parse_tokens(name_no_ext: str):
+    n = name_no_ext
     size = None
-    m = RE_SIZE.search(name_l)
-    if m:
-        size = m.group(1)
-
-    color = None
-    m = RE_COLOR.search(name_l)
-    if m:
-        color = m.group(1)
+    if re.search(r"(^|[_\-])s($|[_\-])", n): size = "s"
+    if re.search(r"(^|[_\-])m($|[_\-])", n): size = "m"
+    if re.search(r"(^|[_\-])l($|[_\-])", n): size = "l"
 
     tm = None
-    m = RE_TRADE.search(name_l)
-    if m:
-        token = m.group(1)
-        if token in ("yes", "trademark"):
-            tm = "yes"
-        elif token in ("no", "no-trademark"):
-            tm = "no"
-        else:
-            tm = token
-    return size, color, tm
+    if "no-trademark" in n: tm = "no"
+    elif "trademark" in n:  tm = "yes"
 
-def is_banned_accent_combo(name_l: str) -> bool:
-    if ("white+accent" in name_l) or ("black+accent" in name_l):
-        return any(b in name_l for b in BRANDS_ACCENT_BAN)
-    return False
+    color = None
+    if "white+accent" in n: color = "white+accent"
+    elif "black+accent" in n: color = "black+accent"
+    elif "white" in n: color = "white"
+    elif "black" in n: color = "black"
 
-def should_delete(name_l: str, suffix: str) -> bool:
-    # A) KH/group accent ban
-    if is_banned_accent_combo(name_l):
-        return True
-    # B) any WHITE JPG
-    if "white" in name_l and suffix == ".jpg":
-        return True
-    # C) size S + trademark YES
-    size, color, trademark = parse_attrs(name_l)
-    if (size == "s") and (trademark == "yes"):
-        return True
-    return False
+    return size, tm, color
 
-def ensure_brand_structure(brand_dir: Path) -> None:
-    """Create the full folder tree for a brand."""
-    # Favicons
-    (brand_dir / "Favicons").mkdir(parents=True, exist_ok=True)
-    # Sizes/Colors/Trademarks
-    for size_dir in SIZE_MAP.values():
-        for color_dir in COLOR_MAP.values():
-            for tm_dir in TRADEMARK_MAP.values():
-                (brand_dir / size_dir / color_dir / tm_dir).mkdir(parents=True, exist_ok=True)
+def is_favicon(name_no_ext: str) -> bool:
+    return ("favicon" in name_no_ext) or ("monogram" in name_no_ext)
 
-def place_target_for_file(brand: str, name_l: str) -> Path | None:
-    """Compute the destination directory (not including filename)."""
-    brand_dir = ROOT / brand
-    ensure_brand_structure(brand_dir)
+# ------------------------- Cleaning rules -------------------------
 
-    # Favicons / Monogram go to Favicons
-    if RE_FAVICON.search(name_l) or RE_MONOGRAM.search(name_l):
-        return brand_dir / "Favicons"
+def should_delete(brand: str | None, size: str | None, tm: str | None, color: str | None, ext: str, name_no_ext: str) -> tuple[bool, str]:
+    # size "s" AND trademark=yes -> delete
+    if size == "s" and tm == "yes":
+        return True, "rule:size=s & trademark=yes"
+    # any white + jpg -> delete
+    if ext == ".jpg" and color is not None and "white" in color:
+        return True, "rule:white + jpg"
+    # KORTE-HOFFMANN / KH-Gruppe: no *+accent variants
+    if brand in {"KORTE-HOFFMANN", "KH-Gruppe"} and color in {"white+accent", "black+accent"}:
+        return True, f"rule:{brand} & {color} not allowed"
+    return False, ""
 
-    size, color, trademark = parse_attrs(name_l)
+# ------------------------- Dest path builder -------------------------
 
-    # If not parsed, we cannot place
-    if size not in SIZE_MAP or color not in COLOR_MAP or trademark not in ("yes", "no"):
-        return None
+def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str | None, is_fav: bool) -> str:
+    if is_fav:
+        return os.path.join(brand_root, "Favicons")
+    sz = size if size in SIZE_CANON else "l"
+    cl = color if color in COLOR_CANON else "black"
+    tr = tm if tm in TRADEMARK_CANON else "no"
+    color_dir = {
+        "white": "Color=White",
+        "black": "Color=Black",
+        "white+accent": "Color=White+Accent",
+        "black+accent": "Color=Black+Accent",
+    }[cl]
+    return os.path.join(
+        brand_root,
+        f"Size={sz.upper()}",
+        color_dir,
+        f"Trademark={'Yes' if tr=='yes' else 'No'}",
+    )
 
-    size_folder = SIZE_MAP[size]
-    color_folder = COLOR_MAP[color]
-    tm_folder = TRADEMARK_MAP["trademark" if trademark == "yes" else "no-trademark"]
-    return brand_dir / size_folder / color_folder / tm_folder
+# ------------------------- ZIP helpers -------------------------
 
-def move_file(src: Path, dst_dir: Path, new_name: str) -> Path:
-    dst_dir.mkdir(parents=True, exist_ok=True)
-    dst = dst_dir / new_name
-    # if moving within same directory with only rename, use replace
-    if src.resolve() == dst.resolve():
-        return dst
-    # if exists and is same content? We'll overwrite safely by replacing
-    return shutil.move(str(src), str(dst))
+def collect_variant_groups(root: str):
+    groups = defaultdict(list)
+    for dirpath, _, filenames in os.walk(root):
+        for fn in filenames:
+            ext = os.path.splitext(fn)[1].lower()
+            if ext in ALLOWED_EXTS:
+                base, _ = os.path.splitext(fn)
+                groups[os.path.join(dirpath, base)].append(os.path.join(dirpath, fn))
+    for base, files in groups.items():
+        zip_path = base + ".zip"
+        yield zip_path, sorted(files)
 
-def make_zip(zip_path: Path, files: list[Path]) -> None:
-    if not files:
-        return
-    zip_path.parent.mkdir(parents=True, exist_ok=True)
+def make_zip(zip_path: str, files: list[str], overwrite: bool):
+    if os.path.exists(zip_path):
+        if not overwrite:
+            return "skip_exists"
+        try:
+            os.remove(zip_path)
+        except Exception:
+            pass
+    os.makedirs(os.path.dirname(zip_path), exist_ok=True)
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for f in files:
-            if f.exists() and f.is_file():
-                # store relative path within zip as basename only
-                zf.write(f, arcname=f.name)
+            if os.path.isfile(f):
+                zf.write(f, arcname=os.path.basename(f))
+    return "created"
 
-def zip_brand_folder(brand_dir: Path) -> None:
-    zip_path = brand_dir / (brand_dir.name + ".zip")
-    # rebuild each time to ensure freshness
-    files = [p for p in brand_dir.rglob("*") if p.is_file() and p.suffix.lower() in VALID_EXTS]
-    make_zip(zip_path, files)
+def zip_per_brand(brand_root: str, overwrite: bool):
+    parent = os.path.dirname(brand_root)
+    brand_name = os.path.basename(brand_root.rstrip(os.sep))
+    zip_path = os.path.join(parent, f"{brand_name}.zip")
+    if os.path.exists(zip_path) and not overwrite:
+        return "skip_exists"
+    if os.path.exists(zip_path):
+        try: os.remove(zip_path)
+        except Exception: pass
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for dirpath, _, filenames in os.walk(brand_root):
+            for fn in filenames:
+                full = os.path.join(dirpath, fn)
+                rel = os.path.relpath(full, start=parent)
+                zf.write(full, arcname=rel)
+    return "created"
 
-def build_variant_zips_in_dir(directory: Path) -> None:
-    """
-    For all files in 'directory', create zip per variant (basename without extension). Include jpg/png/svg/pdf that exist.
-    Place <basename>.zip in 'directory'. Skip if already exists with same members count; otherwise (re)build.
-    """
-    by_base = defaultdict(list)
-    for f in directory.iterdir():
-        if f.is_file() and f.suffix.lower() in VALID_EXTS:
-            by_base[f.stem].append(f)
+# ------------------------- Sorting core -------------------------
 
-    for base, files in by_base.items():
-        zip_path = directory / f"{base}.zip"
-        # make/refresh zip
-        make_zip(zip_path, sorted(files))
+def sort_from_dot_sort(base_dir: str, overwrite: bool, progress_step: int, debug: bool):
+    dot_sort = os.path.join(base_dir, ".sort")
+    if not os.path.isdir(dot_sort):
+        err(f"{os.path.relpath(dot_sort, base_dir)} not found.")
+        return {
+            "kept":0, "moved":0, "deleted":0, "skipped":0, "renamed":0
+        }
 
-def audit_and_fix_brand_tree(brand_root: Path) -> None:
-    """Walk brand_root and ensure variant zips exist; also normalize any stray filenames and re-place them if needed."""
-    for path in brand_root.rglob("*"):
-        if path.is_file():
-            # Normalize filename
-            norm = normalize_filename(path.name)
-            norm_path = path.with_name(norm)
-            if norm_path != path:
-                if norm_path.exists():
-                    path.unlink(missing_ok=True)
-                    path = norm_path
+    files = []
+    for fn in os.listdir(dot_sort):
+        full = os.path.join(dot_sort, fn)
+        if not os.path.isfile(full):
+            continue
+        # Skip hidden/metadata files
+        if fn.startswith("."):
+            continue
+        if fn.lower() in SKIP_FILES:
+            continue
+        files.append(full)
+
+    total = len(files)
+    info(f"Sorting from .sort | files: {total}")
+
+    stats = {"kept":0, "moved":0, "deleted":0, "skipped":0, "renamed":0}
+    for i, full in enumerate(files, 1):
+        d, fn = os.path.dirname(full), os.path.basename(full)
+        stem, ext = os.path.splitext(fn)
+        ext_l = ext.lower()
+
+        # process only allowed types
+        if ext_l not in ALLOWED_EXTS:
+            stats["skipped"] += 1
+            if debug: dbg(f"skip(ext): {fn}")
+            continue
+
+        # normalize only the stem, keep/lower ext
+        new_stem = normalize_stem(stem)
+        new_fn = f"{new_stem}{ext_l}"
+        if new_fn != fn:
+            new_full = os.path.join(d, new_fn)
+            try:
+                if os.path.exists(new_full):
+                    try: os.remove(new_full)
+                    except Exception: pass
+                os.rename(full, new_full)
+                full = new_full
+                fn = new_fn
+                stem = new_stem
+                stats["renamed"] += 1
+                if debug: dbg(f"renamed: {fn}")
+            except FileNotFoundError:
+                # File vanished between list & rename (rare on Windows) – skip safely
+                warn(f"rename race, skipping: {fn}")
+                stats["skipped"] += 1
+                continue
+
+        # brand
+        brand = detect_brand_from_name(stem)
+        if brand is None:
+            stats["skipped"] += 1
+            if debug: dbg(f"skip(no brand): {fn}")
+            continue
+
+        size, tm, color = parse_tokens(stem)
+        del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem)
+        if del_flag:
+            try:
+                os.remove(full)
+                stats["deleted"] += 1
+                if debug: dbg(f"delete({reason}): {fn}")
+            except Exception as e:
+                warn(f"failed delete {fn}: {e}")
+            continue
+
+        brand_root = ensure_brand_root(base_dir, brand)
+        subdir = dest_path_for(brand_root, size, color, tm, is_favicon(stem))
+        os.makedirs(subdir, exist_ok=True)
+
+        dest = os.path.join(subdir, fn)
+        if os.path.exists(dest) and overwrite:
+            try: os.remove(dest)
+            except Exception: pass
+        if not os.path.exists(dest):
+            try:
+                shutil.move(full, dest)
+                stats["moved"] += 1
+                if debug: dbg(f"move -> {os.path.relpath(dest, base_dir)}")
+            except Exception as e:
+                warn(f"failed move {fn} -> {dest}: {e}")
+                stats["skipped"] += 1
+        else:
+            stats["skipped"] += 1
+            if debug: dbg(f"skip(exists): {os.path.relpath(dest, base_dir)}")
+
+        if progress_step and (i % progress_step == 0 or i == total):
+            info(f"Progress: {i}/{total}")
+
+    info("Post-sort ZIP crawl start")
+    crawl_stats = crawl_and_zip(base_dir, overwrite=overwrite, progress_step=progress_step, debug=debug, do_repairs=False)
+    info("Post-sort ZIP crawl done")
+
+    return stats | {f"zip_{k}": v for k, v in crawl_stats.items()}
+
+# ------------------------- Crawl/Repair & ZIP -------------------------
+
+def crawl_and_zip(base_dir: str, overwrite: bool, progress_step: int, debug: bool, do_repairs: bool=True):
+    stats = {
+        "kept":0, "deleted":0,
+        "zip_variant_created":0, "zip_variant_skip_exists":0,
+        "zip_brand_created":0, "zip_brand_skip_exists":0
+    }
+
+    brand_roots = []
+    listing = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+    for b in BRAND_CANON:
+        if any(d.lower() == b.lower() for d in listing):
+            real = next(d for d in listing if d.lower() == b.lower())
+            brand_roots.append(os.path.join(base_dir, real))
+
+    info("Crawl/Repair & ZIP start")
+    for br in brand_roots:
+        count_files = 0
+        for dirpath, _, filenames in os.walk(br):
+            count_files += len(filenames)
+        info(f"[{os.path.basename(br)}] Dateien: {count_files}")
+
+        processed = 0
+        for dirpath, _, filenames in os.walk(br):
+            for fn in filenames:
+                full = os.path.join(dirpath, fn)
+                stem, ext = os.path.splitext(fn)
+                ext_l = ext.lower()
+
+                # Skip non-target files during repairs, but still count for progress
+                if ext_l not in ALLOWED_EXTS:
+                    processed += 1
+                    if progress_step and (processed % progress_step == 0 or processed == count_files):
+                        info(f"[{os.path.basename(br)}] Progress: {processed}/{count_files}")
+                    continue
+
+                brand = detect_brand_from_name(stem) or os.path.basename(br)
+                size, tm, color = parse_tokens(stem)
+
+                if do_repairs:
+                    del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem)
+                    if del_flag:
+                        try:
+                            os.remove(full)
+                            stats["deleted"] += 1
+                            if debug: dbg(f"repair delete({reason}): {os.path.relpath(full, base_dir)}")
+                        except Exception as e:
+                            warn(f"failed delete during crawl: {full}: {e}")
+                    else:
+                        stats["kept"] += 1
                 else:
-                    path = Path(shutil.move(str(path), str(norm_path)))
+                    stats["kept"] += 1
 
-    # Rebuild variant zips inside all leaf directories (incl. Favicons)
-    for d in [p for p in brand_root.rglob("*") if p.is_dir()]:
-        build_variant_zips_in_dir(d)
+                processed += 1
+                if progress_step and (processed % progress_step == 0 or processed == count_files):
+                    info(f"[{os.path.basename(br)}] Progress: {processed}/{count_files}")
 
-# ---------- Core processing ----------
+        # Variant ZIPs
+        for zip_path, files in collect_variant_groups(br):
+            status = make_zip(zip_path, files, overwrite=overwrite)
+            if status == "created":
+                stats["zip_variant_created"] += 1
+                if debug: dbg(f"zip variant + {os.path.relpath(zip_path, base_dir)}")
+            else:
+                stats["zip_variant_skip_exists"] += 1
 
-def handle_one_file(src: Path) -> None:
-    if not src.is_file():
-        return
-    if src.suffix.lower() not in VALID_EXTS:
-        return
+        # Brand ZIP
+        brand_zip_status = zip_per_brand(br, overwrite=overwrite)
+        if brand_zip_status == "created":
+            stats["zip_brand_created"] += 1
+            if debug: dbg(f"zip brand + {os.path.basename(br)}.zip")
+        else:
+            stats["zip_brand_skip_exists"] += 1
 
-    norm_name = normalize_filename(src.name)
-    name_l = os.path.splitext(norm_name)[0]  # lowercased within normalize
+    info("Crawl/Repair & ZIP done")
+    return stats
 
-    # Brand detection
-    brand = detect_brand_from_name(name_l)
-
-    # Dreihaus -> Gebaeudedruck already handled in detect_brand
-    # If favicon+monogram without explicit brand, default to KH
-    if (brand is None) and (RE_FAVICON.search(name_l) or RE_MONOGRAM.search(name_l)):
-        brand = "korte-hoffmann"
-
-    if brand is None or brand not in KNOWN_BRANDS:
-        # unknown – skip silently
-        return
-
-    # deletion rules
-    if should_delete(name_l, src.suffix.lower()):
-        src.unlink(missing_ok=True)
-        return
-
-    # destination
-    dst_dir = place_target_for_file(brand, name_l)
-    if dst_dir is None:
-        # can't place (missing attrs) => keep under brand root as fallback
-        dst_dir = ROOT / brand
-
-    # move (and rename if needed)
-    new_path = move_file(src, dst_dir, norm_name)
-
-def process_sort_mode() -> None:
-    if not SORT_DIR.exists():
-        print("[FEHLER] .sort nicht gefunden.", file=sys.stderr)
-        return
-    for p in sorted(SORT_DIR.iterdir()):
-        handle_one_file(p)
-
-    # After moving, create brand zips and variant zips
-    for brand in KNOWN_BRANDS:
-        brand_dir = ROOT / brand
-        if brand_dir.exists():
-            ensure_brand_structure(brand_dir)
-            # Create variant zips recursively
-            for d in [brand_dir] + [p for p in brand_dir.rglob("*") if p.is_dir()]:
-                build_variant_zips_in_dir(d)
-            # Brand zip
-            zip_brand_folder(brand_dir)
-
-def process_audit_mode() -> None:
-    # Crawl existing brand folders, fix names/placements where possible, rebuild zips.
-    # Also sweep stray files at root (non-.sort) that belong to a brand.
-    # 1) Pass over root files
-    for p in ROOT.iterdir():
-        if p.is_file() and p.suffix.lower() in VALID_EXTS:
-            handle_one_file(p)
-
-    # 2) Audit each brand tree
-    for brand in KNOWN_BRANDS:
-        bdir = ROOT / brand
-        if bdir.exists():
-            audit_and_fix_brand_tree(bdir)
-            # ensure full structure
-            ensure_brand_structure(bdir)
-            # brand zip
-            zip_brand_folder(bdir)
-
-    # 3) Also check any misfiled files under arbitrary folders: try to re-handle them
-    for p in ROOT.rglob("*"):
-        # skip .sort and zips
-        if SORT_DIR in p.parents:
-            continue
-        if p.suffix.lower() == ".zip":
-            continue
-        if p.is_file() and p.suffix.lower() in VALID_EXTS:
-            # attempt delete/move based on its (possibly wrong) name
-            handle_one_file(p)
-
-    # final pass: rebuild variant zips again (to include freshly moved files)
-    for brand in KNOWN_BRANDS:
-        bdir = ROOT / brand
-        if bdir.exists():
-            for d in [bdir] + [p for p in bdir.rglob("*") if p.is_dir()]:
-                build_variant_zips_in_dir(d)
-            zip_brand_folder(bdir)
-
-# ---------- CLI ----------
+# ------------------------- CLI / Menu -------------------------
 
 def main():
-    ap = argparse.ArgumentParser(description="Sort/crawl KOHO logo exports.")
-    ap.add_argument("--mode", choices=["sort", "audit"], default="sort",
-                    help="sort: process ./.sort ; audit: crawl & fix existing folders")
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser(description="Sort & ZIP KH logos")
+    parser.add_argument("--mode", choices=["sort","crawl"], default=None, help="sort = sort from .sort then crawl/zip; crawl = crawl/repair & zip only")
+    parser.add_argument("--overwrite", action="store_true", default=True, help="overwrite files/ZIPs (default: True)")
+    parser.add_argument("--no-overwrite", action="store_false", dest="overwrite", help="do not overwrite")
+    parser.add_argument("--progress", type=int, default=1000, help="progress step (files). 0 to disable")
+    parser.add_argument("--debug", action="store_true", default=False, help="verbose debug output")
+    parser.add_argument("--dry-run", action="store_true", default=False, help="analyze only (no writes) [kept for compatibility]")
+    parser.add_argument("--menu", action="store_true", default=False, help="force interactive menu")
+    args = parser.parse_args()
 
-    if args.mode == "sort":
-        process_sort_mode()
+    base_dir = os.getcwd()
+    mode = args.mode
+
+    if args.menu or mode is None:
+        print()
+        print("Select mode:")
+        print("  [1] Sort .sort (then ZIP by crawling)")
+        print("  [2] Crawl/Repair & ZIP only")
+        choice = input("Enter 1 or 2: ").strip()
+        if choice == "1": mode = "sort"
+        elif choice == "2": mode = "crawl"
+        else:
+            err("Invalid selection. Exiting.")
+            sys.exit(1)
+
+    info(f"root={base_dir}  mode={mode}  debug={args.debug}  dry_run=False  overwrite={args.overwrite}  progress={args.progress}")
+
+    if mode == "sort":
+        stats = sort_from_dot_sort(base_dir, overwrite=args.overwrite, progress_step=args.progress, debug=args.debug)
     else:
-        process_audit_mode()
+        stats = crawl_and_zip(base_dir, overwrite=args.overwrite, progress_step=args.progress, debug=args.debug, do_repairs=True)
+
+    print("\n[SUMMARY]")
+    for k in sorted(stats.keys()):
+        print(f"  {k:24s}: {stats[k]}")
+    print()
 
 if __name__ == "__main__":
     main()
