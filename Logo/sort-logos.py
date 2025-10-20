@@ -14,12 +14,12 @@ Korte-Hoffmann | Logo sorter & ZIPper
 - Special routes:
   * "korte-hoffmann_monogram_*color*" -> KORTE-HOFFMANN/Monogram/Color=*Color*
   * "*_favicon_*color*" for brands -> <Brand>/Favicons/Color=*Color*
-  * Any "Dreihaus" -> KH-Gebaeudedruck/DREIHAUS/Color=*color*/Size=*size*/Trademark=*trademark*
+  * Any "Dreihaus" -> KH-Gebaeudedruck/DREIHAUS/Color=*color*/Size=*size*/Trademark=*trademark*/Clearspace=*clearspace*
 - Favicons/Monogram handled as above
-- Folders: Size=L|M|S / Color=White|Black|White+Accent|Black+Accent / Trademark=Yes|No
+- Folders: Size=XXL|M|XXS / Color=White|Black|White+Accent|Black+Accent / Trademark=Yes|No / Clearspace=Yes|No
 - Cleaning rules (per interaktiver Bestätigung aktivierbar):
-  * size S AND trademark=yes -> delete  [RULE:size_s_tm]
-  * any WHITE + JPG -> delete            [RULE:white_jpg]
+  * size XXS AND trademark=yes -> delete [RULE:size_xxs_tm]
+  * any WHITE + JPG -> delete           [RULE:white_jpg]
   * brand in {KORTE-HOFFMANN, KH-Gruppe} AND color in {white+accent, black+accent} -> delete [RULE:accent_banned]
 - After sorting: crawl directory to build ZIPs per-variant and per-brand
 """
@@ -54,8 +54,6 @@ BRAND_CANON = [
     "KH-Gruppe",
     "KH-Immobilien",
     "KORTE-HOFFMANN",
-    "KH-Gebaeudedruck+Ingenieure",
-    "KH-Immobilien+Ingenieure",
 ]
 
 COLOR_CANON = [
@@ -65,7 +63,7 @@ COLOR_CANON = [
     "black+accent",
 ]
 
-SIZE_CANON = ["l", "m", "s"]
+SIZE_CANON = ["xxl", "m", "xxs"]
 
 TRADEMARK_CANON = ["yes", "no"]
 
@@ -75,7 +73,7 @@ SKIP_FILES = {"thumbs.db", "desktop.ini"}
 
 # Interaktiv konfigurierbare Löschregeln (Default: None -> wird abgefragt)
 DELETE_POLICY = {
-    "size_s_tm": None,        # size=S & trademark=Yes
+    "size_xxs_tm": None,      # size=XXS & trademark=Yes
     "white_jpg": None,        # *.jpg mit white oder white+accent
     "accent_banned": None,    # Accent bei KH-Gruppe/KORTE-HOFFMANN löschen
 }
@@ -119,11 +117,6 @@ def detect_brand_from_name(name: str) -> str | None:
     n = name.lower()
     if "dreihaus" in n:
         return "KH-Gebaeudedruck"
-    # explicit “+ingenieure” combinations
-    if "gebaeudedruck+ingenieure" in n or "gebäudedruck+ingenieure" in n:
-        return "KH-Gebaeudedruck+Ingenieure"
-    if "immobilien+ingenieure" in n:
-        return "KH-Immobilien+Ingenieure"
     if any(k in n for k in ["gebaeudedruck", "gebäudedruck", "gebauudedruck"]):
         return "KH-Gebaeudedruck"
     if "immobilien" in n:
@@ -158,11 +151,11 @@ def get_brand_roots(base_dir: str) -> list[str]:
 # ------------------------- Variant parsing -------------------------
 
 def parse_tokens(name_no_ext: str):
-    n = name_no_ext
+    n = name_no_ext.lower()
     size = None
-    if re.search(r"(^|[_\-])s($|[_\-])", n): size = "s"
-    if re.search(r"(^|[_\-])m($|[_\-])", n): size = "m"
-    if re.search(r"(^|[_\-])l($|[_\-])", n): size = "l"
+    if "size-xxs" in n: size = "xxs"
+    elif "size-m" in n: size = "m"
+    elif "size-xxl" in n: size = "xxl"
 
     tm = None
     if "no-trademark" in n: tm = "no"
@@ -173,8 +166,12 @@ def parse_tokens(name_no_ext: str):
     elif "black+accent" in n: color = "black+accent"
     elif "white" in n: color = "white"
     elif "black" in n: color = "black"
+    
+    clearspace = None
+    if "no-clearspace" in n: clearspace = "no"
+    elif "clearspace" in n:  clearspace = "yes"
 
-    return size, tm, color
+    return size, tm, color, clearspace
 
 def is_favicon(name_no_ext: str) -> bool:
     # favicon only
@@ -218,17 +215,17 @@ def safe_rename_case_insensitive(src: str, dst: str) -> str:
 
 # ------------------------- Cleaning rules -------------------------
 
-def should_delete(brand: str | None, size: str | None, tm: str | None, color: str | None, ext: str, name_no_ext: str) -> tuple[bool, str]:
+def should_delete(brand: str | None, size: str | None, tm: str | None, color: str | None, ext: str, name_no_ext: str, clearspace: str | None) -> tuple[bool, str]:
     nn = name_no_ext.lower()
 
     # Nie löschen: Dreihaus
     if "dreihaus" in nn:
         return False, ""
 
-    # RULE:size_s_tm
-    if DELETE_POLICY.get("size_s_tm", False):
-        if size == "s" and tm == "yes":
-            return True, "rule:size=s & trademark=yes"
+    # RULE:size_xxs_tm
+    if DELETE_POLICY.get("size_xxs_tm", False):
+        if size == "xxs" and tm == "yes":
+            return True, "rule:size=xxs & trademark=yes"
 
     # RULE:white_jpg
     if DELETE_POLICY.get("white_jpg", False):
@@ -244,17 +241,21 @@ def should_delete(brand: str | None, size: str | None, tm: str | None, color: st
 
 # ------------------------- Dest path builder -------------------------
 
-def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str | None, is_fav: bool, is_mono: bool, is_dreihaus: bool) -> str:
+def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str | None, is_fav: bool, is_mono: bool, is_dreihaus: bool, clearspace: str | None) -> str:
     # normalize tokens
-    sz = size if size in SIZE_CANON else "l"
+    sz = size if size in SIZE_CANON else "m"
     cl = color if color in COLOR_CANON else "black"
     tr = tm if tm in TRADEMARK_CANON else "no"
+    cs = clearspace if clearspace in ["yes", "no"] else "no"
+    
     color_dir = {
         "white": "Color=White",
         "black": "Color=Black",
         "white+accent": "Color=White+Accent",
         "black+accent": "Color=Black+Accent",
     }[cl]
+    
+    clearspace_dir = f"Clearspace={'Yes' if cs == 'yes' else 'No'}"
 
     # Special: Monogram under KORTE-HOFFMANN
     if is_mono and os.path.basename(brand_root).lower() == "korte-hoffmann":
@@ -272,6 +273,7 @@ def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str 
             color_dir,
             f"Size={sz.upper()}",
             f"Trademark={'Yes' if tr=='yes' else 'No'}",
+            clearspace_dir,
         )
 
     # Default
@@ -280,6 +282,7 @@ def dest_path_for(brand_root: str, size: str | None, color: str | None, tm: str 
         f"Size={sz.upper()}",
         color_dir,
         f"Trademark={'Yes' if tr=='yes' else 'No'}",
+        clearspace_dir,
     )
 
 # ------------------------- ZIP helpers -------------------------
@@ -291,9 +294,15 @@ def collect_variant_groups(root: str):
             ext = os.path.splitext(fn)[1].lower()
             if ext in ALLOWED_EXTS:
                 base, _ = os.path.splitext(fn)
-                groups[os.path.join(dirpath, base)].append(os.path.join(dirpath, fn))
-    for base, files in groups.items():
-        zip_path = base + ".zip"
+                # Normalize the base name by removing color mode suffixes for grouping
+                normalized_base = re.sub(r'_(rgb|cmyk)$', '', base)
+                # The key for grouping is the path + normalized base name
+                group_key = os.path.join(dirpath, normalized_base)
+                groups[group_key].append(os.path.join(dirpath, fn))
+
+    # Yield each group to be zipped
+    for group_key, files in groups.items():
+        zip_path = group_key + ".zip"
         yield zip_path, sorted(files)
 
 def make_zip(zip_path: str, files: list[str], overwrite: bool):
@@ -389,8 +398,14 @@ def sort_from_dot_sort(base_dir: str, overwrite: bool, progress_step: int, debug
             if debug: dbg(f"skip(no brand): {fn}")
             continue
 
-        size, tm, color = parse_tokens(stem)
-        del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem)
+        size, tm, color, clearspace = parse_tokens(stem)
+        if tm is None:
+            warn(f"Trademark token missing in '{fn}', defaulting to 'no'.")
+        if clearspace is None:
+            warn(f"Clearspace token missing in '{fn}', defaulting to 'no'.")
+
+
+        del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem, clearspace)
         if del_flag:
             try:
                 os.remove(full)
@@ -407,6 +422,7 @@ def sort_from_dot_sort(base_dir: str, overwrite: bool, progress_step: int, debug
             is_fav=is_favicon(stem),
             is_mono=is_monogram(stem),
             is_dreihaus=("dreihaus" in stem.lower()),
+            clearspace=clearspace
         )
         os.makedirs(subdir, exist_ok=True)
 
@@ -468,10 +484,15 @@ def crawl_and_zip(base_dir: str, overwrite: bool, progress_step: int, debug: boo
                     continue
 
                 brand = detect_brand_from_name(stem) or os.path.basename(br)
-                size, tm, color = parse_tokens(stem)
+                size, tm, color, clearspace = parse_tokens(stem)
+                if tm is None:
+                    warn(f"Trademark token missing in '{fn}', defaulting to 'no'.")
+                if clearspace is None:
+                    warn(f"Clearspace token missing in '{fn}', defaulting to 'no'.")
+
 
                 if do_repairs:
-                    del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem)
+                    del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem, clearspace)
                     if del_flag:
                         try:
                             os.remove(full)
@@ -544,10 +565,15 @@ def crawl_repair_and_zip(base_dir: str, overwrite: bool, progress_step: int, deb
             stats["kept"] += 1
             continue
 
-        size, tm, color = parse_tokens(stem)
+        size, tm, color, clearspace = parse_tokens(stem)
+        if tm is None:
+            warn(f"Trademark token missing in '{fn}', defaulting to 'no'.")
+        if clearspace is None:
+            warn(f"Clearspace token missing in '{fn}', defaulting to 'no'.")
+
 
         # Deletion check via policy
-        del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem)
+        del_flag, reason = should_delete(brand, size, tm, color, ext_l, stem, clearspace)
         if del_flag:
             try:
                 os.remove(full_path)
@@ -565,6 +591,7 @@ def crawl_repair_and_zip(base_dir: str, overwrite: bool, progress_step: int, deb
             is_fav=is_favicon(stem),
             is_mono=is_monogram(stem),
             is_dreihaus=("dreihaus" in stem.lower()),
+            clearspace=clearspace
         )
         current_dir = os.path.dirname(full_path)
 
@@ -626,8 +653,8 @@ def configure_delete_policy(non_interactive: bool):
 
     print("\nLöschregeln konfigurieren:")
     print("Hinweis: 'dreihaus' wird nie gelöscht, unabhängig von den Regeln.")
-    if DELETE_POLICY["size_s_tm"] is None:
-        DELETE_POLICY["size_s_tm"] = ask_yes_no("Regel aktivieren: size=S UND trademark=Yes löschen?", default=True)
+    if DELETE_POLICY["size_xxs_tm"] is None:
+        DELETE_POLICY["size_xxs_tm"] = ask_yes_no("Regel aktivieren: size=XXS UND trademark=Yes löschen?", default=True)
     if DELETE_POLICY["white_jpg"] is None:
         DELETE_POLICY["white_jpg"] = ask_yes_no("Regel aktivieren: JPGs mit white/white+accent im Namen löschen?", default=True)
     if DELETE_POLICY["accent_banned"] is None:
@@ -635,7 +662,7 @@ def configure_delete_policy(non_interactive: bool):
 
     print("\nZusammenfassung Löschregeln:")
     for k, v in DELETE_POLICY.items():
-        print(f"  {k:14s}: {'ON' if v else 'OFF'}")
+        print(f"  {k:15s}: {'ON' if v else 'OFF'}")
     proceed = ask_yes_no("Mit diesen Löschregeln fortfahren?")
     if not proceed:
         print("Abgebrochen.")
@@ -678,7 +705,7 @@ def main():
     configure_delete_policy(non_interactive=args.assume_no)
 
     info(f"root={base_dir}  mode={mode}  debug={args.debug}  dry_run=False  overwrite={args.overwrite}  progress={args.progress}")
-    info(f"delete_policy: size_s_tm={DELETE_POLICY['size_s_tm']} white_jpg={DELETE_POLICY['white_jpg']} accent_banned={DELETE_POLICY['accent_banned']}")
+    info(f"delete_policy: size_xxs_tm={DELETE_POLICY['size_xxs_tm']} white_jpg={DELETE_POLICY['white_jpg']} accent_banned={DELETE_POLICY['accent_banned']}")
 
     if mode == "sort":
         stats = sort_from_dot_sort(base_dir, overwrite=args.overwrite, progress_step=args.progress, debug=args.debug)
