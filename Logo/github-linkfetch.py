@@ -14,10 +14,15 @@ OUTPUT_FILENAME = "logo-data.json"
 # SINGLE SOURCE OF TRUTH: All known filename parts and their meanings.
 # ==============================================================================
 
-# Define multi-part asset types first, so they are matched before single parts.
-# The key is the full identifier, joined by underscores.
+BRAND_CANON = [
+    "KH-Architekten+Ingenieure",
+    "KH-Gebaeudedruck",
+    "KH-Gruppe",
+    "KH-Immobilien",
+    "KORTE-HOFFMANN",
+]
+
 ASSET_TYPE_KEYS = {
-    "favicon_monogram": {"name": "Favicon Monogram"},
     "architekten+ingenieure": {"name": "Architekten+Ingenieure", "type": "standard_logo"},
     "gebaeudedruck": {"name": "Gebäudedruck", "type": "standard_logo"},
     "gruppe": {"name": "Gruppe", "type": "standard_logo"},
@@ -29,24 +34,36 @@ ASSET_TYPE_KEYS = {
 }
 
 VARIANT_PART_DEFINITIONS = {
-    "s": {"group": "optical_size", "name": "Small"}, "m": {"group": "optical_size", "name": "Medium"}, "l": {"group": "optical_size", "name": "Large"},
+    # New Size Variants
+    "size-xxs": {"group": "optical_size", "value": "xxs", "name": "Extra Extra Small"},
+    "size-m":   {"group": "optical_size", "value": "m", "name": "Medium"},
+    "size-xxl": {"group": "optical_size", "value": "xxl", "name": "Extra Extra Large"},
+
+    # Legacy Size Variants (for old dreihaus files, mapping to new values)
+    "size-s": {"group": "optical_size", "value": "xxs", "name": "Small (Legacy)"},
+    "size-l": {"group": "optical_size", "value": "xxl", "name": "Large (Legacy)"},
+    
     "black": {"group": "color", "name": "Black"}, "white": {"group": "color", "name": "White"},
     "black+accent": {"group": "color", "name": "Black+Accent"}, "white+accent": {"group": "color", "name": "White+Accent"},
+    
     "center": {"group": "lockup", "name": "Center"}, "left": {"group": "lockup", "name": "Left"},
     "right": {"group": "lockup", "name": "Right"}, "no-lockup": {"group": "lockup", "name": "No Lockup"},
+    
     "bar": {"group": "bar", "value": True, "name": "Bar"}, "no-bar": {"group": "bar", "value": False, "name": "No Bar"},
     "compact": {"group": "compact", "value": True, "name": "Compact"}, "not-compact": {"group": "compact", "value": False, "name": "Not Compact"},
     "trademark": {"group": "trademark", "value": True, "name": "With ®"}, "no-trademark": {"group": "trademark", "value": False, "name": "Without ®"},
-    "box": {"group": "modifier", "value": "box"}
+    "clearspace": {"group": "clearspace", "value": True, "name": "With Clearspace"}, "no-clearspace": {"group": "clearspace", "value": False, "name": "Without Clearspace"},
+
+    # Modifiers are recognized but not part of the manifest
+    "rgb": {"group": "modifier"},
+    "cmyk": {"group": "modifier"},
 }
 
-# Required variants for each asset type. Unlisted types have no requirements.
 REQUIRED_BY_ASSET_TYPE = {
-    "standard_logo": {"division", "optical_size", "color", "lockup", "bar", "compact", "trademark"},
-    "dreihaus": {"optical_size", "color", "trademark"},
+    "standard_logo": {"division", "optical_size", "color", "lockup", "bar", "compact", "trademark", "clearspace"},
+    "dreihaus": {"optical_size", "color", "trademark", "clearspace"},
     "monogram": {"color"},
     "favicon": {"color"},
-    "favicon_monogram": {"color"}
 }
 
 def get_all_file_urls(owner, repo, path=""):
@@ -60,51 +77,68 @@ def get_all_file_urls(owner, repo, path=""):
 
 def parse_and_validate_files(urls):
     parsed_files, ignored_log = [], []
-    sorted_asset_keys = sorted(ASSET_TYPE_KEYS.keys(), key=len, reverse=True)
+    sorted_brand_keys = sorted([k for k, v in ASSET_TYPE_KEYS.items() if v['type'] == 'standard_logo' or k == 'dreihaus'], key=len, reverse=True)
 
     for url in urls:
         filename, _ = os.path.splitext(os.path.basename(url))
-        parts_str = filename.lower().replace('kh-', '')
-        parts = parts_str.split('_')
         
-        raw_variants, unmatched = {}, []
-        asset_key_found = None
-
-        # Step 1: Find the asset type by checking for the longest matching key first
-        for key in sorted_asset_keys:
-            if parts_str.startswith(key):
-                asset_key_found = key
-                break
-        
-        if not asset_key_found:
-            ignored_log.append({'file': filename, 'reason': f"Could not identify a known asset type at the start of the filename."})
+        # --- ROBUSTNESS: IGNORE TOP-LEVEL BRAND ZIPS ---
+        if filename in BRAND_CANON:
+            ignored_log.append({'file': filename, 'reason': f"Ignoring top-level brand ZIP file."})
             continue
 
-        asset_info = ASSET_TYPE_KEYS[asset_key_found]
-        raw_variants['asset_type'] = asset_info.get('type', asset_key_found)
-        if raw_variants['asset_type'] == 'standard_logo':
-            raw_variants['division'] = asset_key_found
+        parts_str = filename.lower().replace('kh-', '')
+        raw_variants, unmatched = {}, []
         
-        # Step 2: Parse remaining parts
-        remaining_parts = parts_str[len(asset_key_found):].strip('_').split('_')
-        if remaining_parts == ['']: remaining_parts = [] # Handle case where there are no remaining parts
+        # --- RE-ARCHITECTED PARSING LOGIC ---
+        brand_key = None
+        asset_key = None
+        
+        # Step 1: Identify the Brand/Base Asset at the start of the string
+        for key in sorted_brand_keys:
+            if parts_str.startswith(key):
+                brand_key = key
+                break
+        
+        if not brand_key:
+            # Handle special cases that don't start with a brand (e.g., monogram_black.svg)
+            if 'monogram' in parts_str: asset_key = 'monogram'
+            elif 'favicon' in parts_str: asset_key = 'favicon'
+            else:
+                ignored_log.append({'file': filename, 'reason': f"Could not identify a known brand or asset type."})
+                continue
+        
+        # Step 2: Determine final Asset Type and remaining parts
+        asset_key = asset_key or brand_key # Use brand_key if no special key was found yet
+        remaining_str = parts_str
+        
+        if brand_key:
+            remaining_str = parts_str[len(brand_key):].strip('_')
+            # Check if a special type overrides the default
+            if 'favicon' in remaining_str: asset_key = 'favicon'
+            elif 'monogram' in remaining_str: asset_key = 'monogram'
 
+        asset_info = ASSET_TYPE_KEYS[asset_key]
+        raw_variants['asset_type'] = asset_info.get('type', asset_key)
+        
+        if asset_info['type'] == 'standard_logo':
+            raw_variants['division'] = brand_key or asset_key
+        elif brand_key and brand_key != asset_key: # e.g. korte-hoffmann_monogram
+            raw_variants['division'] = brand_key
+
+        # Step 3: Parse all remaining parts into variants
+        remaining_parts = remaining_str.split('_') if remaining_str else []
         for part in remaining_parts:
             if part in VARIANT_PART_DEFINITIONS:
                 definition = VARIANT_PART_DEFINITIONS[part]
                 group = definition['group']
-                if group != 'modifier':
-                    raw_variants[group] = definition.get('value', part)
-            else:
+                value = definition.get('value', part)
+                raw_variants[group] = value
+            elif part and part not in ASSET_TYPE_KEYS:
                 unmatched.append(part)
 
-        # Step 3: Validate based on asset type
+        # Step 4: Validate
         asset_type = raw_variants['asset_type']
-        # Special case for division bundles
-        if asset_type == 'standard_logo' and not remaining_parts:
-            asset_type = 'division_bundle'
-            raw_variants['asset_type'] = asset_type
-        
         required = REQUIRED_BY_ASSET_TYPE.get(asset_type, set())
         missing = required - set(raw_variants.keys())
 
@@ -123,22 +157,24 @@ def create_manifest(parsed_files):
     for file_data in parsed_files:
         for group, value in file_data["raw_variants"].items():
             discovered[group].add(value)
-    
-    # Manually add division_bundle to asset_type manifest
-    discovered['asset_type'].add('division_bundle')
 
     all_defs = {k: v for k, v in VARIANT_PART_DEFINITIONS.items()}
     for k, v in ASSET_TYPE_KEYS.items():
-        all_defs[k] = {"group": "division" if v.get('type') == 'standard_logo' else "asset_type", "name": v['name']}
-    all_defs['division_bundle'] = {"group": "asset_type", "name": "Division Bundle"}
+        group_name = "division" if v.get('type') == 'standard_logo' else "asset_type"
+        all_defs[k] = {"group": group_name, "name": v['name']}
 
     manifest = {}
     for group, options in sorted(discovered.items()):
+        # --- FIX: Explicitly skip modifiers from the manifest ---
+        if group == 'modifier':
+            continue
+            
         manifest[group] = {"name": group.replace('_', ' ').title(), "options": []}
         for option in sorted(list(options), key=lambda x: str(x)):
             name = str(option)
+            # Find the human-readable name from our definitions
             for k, v in all_defs.items():
-                if v['group'] == group and v.get('value', k) == option:
+                if v.get('group') == group and v.get('value', k) == option:
                     name = v['name']
                     break
             manifest[group]["options"].append({"value": option, "name": name})
@@ -147,7 +183,6 @@ def create_manifest(parsed_files):
 def group_and_finalize_logos(parsed_files):
     grouped_logos = defaultdict(dict)
     for file_data in parsed_files:
-        # The key for grouping should ONLY be the variants present in the file
         variant_key = tuple(sorted(file_data["raw_variants"].items()))
         _, file_ext = os.path.splitext(file_data["url"])
         format_key = 'all-formats' if file_ext.lower() == '.zip' else file_ext.lower().strip('.')
@@ -173,10 +208,16 @@ if all_urls:
     
     if ignored_log:
         print(f"\nWARNING: Ignored {len(ignored_log)} files that did not match naming convention:")
-        unique_ignored = sorted(list({frozenset(d.items()) for d in ignored_log}), key=lambda x: dict(x)['file'])
-        for item in unique_ignored:
-            entry = dict(item)
-            print(f"  - File: '{entry['file']}' -> Reason: {entry['reason']}")
+        unique_errors = defaultdict(list)
+        for item in ignored_log:
+            unique_errors[item['reason']].append(item['file'])
+        
+        for reason, files in unique_errors.items():
+            example_file = files[0]
+            if len(files) > 1:
+                print(f"  - Reason: {reason} (e.g., '{example_file}' and {len(files)-1} others)")
+            else:
+                print(f"  - File: '{example_file}' -> Reason: {reason}")
     
     print(f"\nSuccessfully validated {len(valid_files)} files.")
     
